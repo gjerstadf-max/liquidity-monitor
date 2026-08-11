@@ -1,0 +1,168 @@
+from __future__ import annotations
+
+from datetime import date, datetime, timezone
+from decimal import Decimal
+
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Numeric,
+    String,
+    UniqueConstraint,
+)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class DataSource(Base):
+    __tablename__ = "data_sources"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    name: Mapped[str] = mapped_column(
+        String(200),
+        nullable=False,
+        unique=True,
+    )
+
+    short_name: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        unique=True,
+    )
+
+    website: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+    )
+
+    is_primary: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+    )
+
+    indicators: Mapped[list["Indicator"]] = relationship(
+        back_populates="source"
+    )
+
+
+class Indicator(Base):
+    __tablename__ = "indicators"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    symbol: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+
+    name: Mapped[str] = mapped_column(
+        String(200),
+        nullable=False,
+    )
+
+    category: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+    )
+
+    frequency: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+
+    units: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+
+    source_id: Mapped[int] = mapped_column(
+        ForeignKey("data_sources.id"),
+        nullable=False,
+    )
+
+    active: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+    )
+
+    source: Mapped["DataSource"] = relationship(
+        back_populates="indicators"
+    )
+
+    observations: Mapped[list["Observation"]] = relationship(
+        back_populates="indicator",
+        cascade="all, delete-orphan",
+    )
+
+
+class Observation(Base):
+    __tablename__ = "observations"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "indicator_id",
+            "observation_date",
+            name="uq_observation_indicator_date",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    indicator_id: Mapped[int] = mapped_column(
+        ForeignKey("indicators.id"),
+        nullable=False,
+        index=True,
+    )
+
+    observation_date: Mapped[date] = mapped_column(
+        Date,
+        nullable=False,
+        index=True,
+    )
+
+    value: Mapped[Decimal] = mapped_column(
+        Numeric(20, 8),
+        nullable=False,
+    )
+
+    retrieved_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+    )
+
+    indicator: Mapped["Indicator"] = relationship(
+        back_populates="observations"
+    )
