@@ -58,8 +58,8 @@ def load_observations(
 def main() -> None:
     print("Loading New York Fed reference rates...\n")
 
-    sofr = fetch_latest_sofr(10)
-    effr = fetch_latest_effr(10)
+    sofr = fetch_latest_sofr(100)
+    effr = fetch_latest_effr(100)
 
     sofr_inserted, sofr_skipped = load_observations(
         "sofr",
