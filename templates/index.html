@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Liquidity Monitor</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', path='css/styles.css') }}"
+    >
+</head>
+
+<body>
+
+<header>
+    <h1>Liquidity Monitor</h1>
+
+    <p>U.S. Cash Market Liquidity</p>
+</header>
+
+<section class="funding-section">
+
+    <h2>Funding History</h2>
+
+    <div class="section-subtitle">
+        SOFR and EFFR — latest available observations
+    </div>
+
+    <div class="chart-container">
+        <canvas id="fundingChart"></canvas>
+    </div>
+
+</section>
+
+
+<main>
+
+    <section class="assessment">
+
+        <div class="assessment-label">
+            Current Funding Assessment
+        </div>
+
+        <div class="score-row">
+
+            <div class="score">
+                {{ snapshot.assessment.overall_score }}/100
+            </div>
+
+            <div class="condition">
+                {{ snapshot.assessment.overall_condition }}
+            </div>
+
+        </div>
+
+        <div class="confidence">
+            Confidence:
+            {{ snapshot.assessment.confidence }}
+        </div>
+
+        <div class="status-row">
+
+            <div>
+                Market data date:
+                <strong>
+                    {{ snapshot.funding.observation_date }}
+                </strong>
+            </div>
+
+            <div class="status-current">
+                Data status: Current
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <section class="brief">
+
+        <h2>Morning Liquidity Brief</h2>
+
+        <div class="headline">
+            {{ snapshot.morning_brief.headline }}
+        </div>
+
+        <p>
+            {{ snapshot.morning_brief.summary }}
+        </p>
+
+        <div class="brief-grid">
+
+            <div class="brief-box">
+
+                <h3>What Matters</h3>
+
+                <p>
+                    {{ snapshot.morning_brief.what_matters }}
+                </p>
+
+            </div>
+
+            <div class="brief-box">
+
+                <h3>What To Watch</h3>
+
+                <p>
+                    {{ snapshot.morning_brief.what_to_watch }}
+                </p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <section class="funding-section">
+
+        <h2>Overnight Funding</h2>
+
+        <div class="section-subtitle">
+            Latest common SOFR and EFFR observation:
+            {{ snapshot.funding.observation_date }}
+        </div>
+
+        <div class="cards">
+
+            <div class="card">
+
+                <div class="card-title">
+                    SOFR
+                </div>
+
+                <div class="card-value">
+                    {{ "%.2f"|format(snapshot.funding.sofr) }}%
+                </div>
+
+                <div class="card-change">
+                    {{ "%+.0f"|format(snapshot.funding.sofr_change_bp) }}
+                    bp from prior day
+                </div>
+
+                <div class="card-date">
+                    Previous:
+                    {{ "%.2f"|format(snapshot.funding.previous_sofr) }}%
+                    on
+                    {{ snapshot.funding.previous_observation_date }}
+                </div>
+
+            </div>
+
+
+            <div class="card">
+
+                <div class="card-title">
+                    EFFR
+                </div>
+
+                <div class="card-value">
+                    {{ "%.2f"|format(snapshot.funding.effr) }}%
+                </div>
+
+                <div class="card-change">
+                    {{ "%+.0f"|format(snapshot.funding.effr_change_bp) }}
+                    bp from prior day
+                </div>
+
+                <div class="card-date">
+                    Previous:
+                    {{ "%.2f"|format(snapshot.funding.previous_effr) }}%
+                    on
+                    {{ snapshot.funding.previous_observation_date }}
+                </div>
+
+            </div>
+
+
+            <div class="card">
+
+                <div class="card-title">
+                    SOFR − EFFR
+                </div>
+
+                <div class="card-value">
+                    {{ "%+.0f"|format(snapshot.funding.spread_basis_points) }}
+                    bp
+                </div>
+
+                <div class="card-change">
+                    {{ "%+.0f"|format(snapshot.funding.spread_change_bp) }}
+                    bp from prior day
+                </div>
+
+                <div class="card-date">
+                    Previous spread:
+                    {{ "%+.0f"|format(
+                        snapshot.funding.previous_spread_basis_points
+                    ) }}
+                    bp
+                </div>
+
+            </div>
+
+
+            <div class="card">
+
+                <div class="card-title">
+                    Funding Score
+                </div>
+
+                <div class="card-value">
+                    {{ snapshot.assessment.funding.score }}/100
+                </div>
+
+                <div class="card-change">
+                    {{ snapshot.assessment.funding.condition }}
+                </div>
+
+                <div class="card-date">
+                    Confidence:
+                    {{ snapshot.assessment.funding.confidence }}
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+</main>
+
+
+<footer>
+
+    Application generated:
+    {{ snapshot.generated_at.strftime("%B %d, %Y at %H:%M UTC") }}
+
+    &nbsp; • &nbsp;
+
+    Market data:
+    Federal Reserve Bank of New York
+
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    async function loadFundingChart() {
+        const response = await fetch(
+            "/api/funding/history?observations=60"
+        );
+
+        if (!response.ok) {
+            console.error(
+                "Funding history request failed:",
+                response.status
+            );
+            return;
+        }
+
+        const data = await response.json();
+
+        const labels = data.map(
+            item => item.date
+        );
+
+        const sofr = data.map(
+            item => item.sofr
+        );
+
+        const effr = data.map(
+            item => item.effr
+        );
+
+        const canvas = document.getElementById(
+            "fundingChart"
+        );
+
+        new Chart(canvas, {
+            type: "line",
+
+            data: {
+                labels: labels,
+
+                datasets: [
+                    {
+                        label: "SOFR",
+                        data: sofr,
+                        borderWidth: 2,
+                        pointRadius: 2,
+                        tension: 0.15,
+                    },
+                    {
+                        label: "EFFR",
+                        data: effr,
+                        borderWidth: 2,
+                        pointRadius: 2,
+                        tension: 0.15,
+                    },
+                ],
+            },
+
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+
+                interaction: {
+                    mode: "index",
+                    intersect: false,
+                },
+
+                plugins: {
+                    legend: {
+                        position: "top",
+                    },
+
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return (
+                                    context.dataset.label +
+                                    ": " +
+                                    context.parsed.y.toFixed(2) +
+                                    "%"
+                                );
+                            }
+                        }
+                    }
+                },
+
+                scales: {
+                    y: {
+                        ticks: {
+                            callback: function(value) {
+                                return value.toFixed(2) + "%";
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    loadFundingChart();
+</script>
+</body>
+
+</html>
