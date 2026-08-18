@@ -1,15 +1,33 @@
-from backend.database.connection import DATABASE_PATH, engine
+from backend.database.connection import engine
 from backend.database.models import Base
 
 
-def initialize_database() -> None:
-    print("Creating Liquidity Monitor database...")
-    print(f"Database location: {DATABASE_PATH}")
+def init_db() -> None:
+    """
+    Create all database tables for the active database.
 
-    Base.metadata.create_all(bind=engine)
+    The active database is selected by connection.py:
+        - Cloud SQL PostgreSQL when Cloud SQL variables are set
+        - DATABASE_URL when supplied
+        - Local SQLite otherwise
+    """
 
-    print("Database tables created successfully.")
+    print()
+    print("Initializing Liquidity Monitor database")
+    print("========================================")
+
+    print(
+        f"Database: "
+        f"{engine.url.render_as_string(hide_password=True)}"
+    )
+
+    Base.metadata.create_all(
+        bind=engine
+    )
+
+    print()
+    print("Database schema initialized successfully.")
 
 
 if __name__ == "__main__":
-    initialize_database()
+    init_db()

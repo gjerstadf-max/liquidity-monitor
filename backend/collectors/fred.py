@@ -4,9 +4,12 @@ import os
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
+from dotenv import load_dotenv
+
 
 import httpx
 
+load_dotenv()
 
 FRED_API_URL = (
     "https://api.stlouisfed.org/fred/series/observations"

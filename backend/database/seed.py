@@ -56,7 +56,13 @@ def seed_database() -> None:
                 "frequency": "Daily",
                 "units": "USD Billions",
             },
-
+            {   
+                "symbol": "on_rrp",
+                "name": "Overnight Reverse Repurchase Agreements",
+                "category": "Funding",
+                "frequency": "Daily",
+                "units": "USD Billions",
+            },
         ]
 
         for definition in indicator_definitions:
