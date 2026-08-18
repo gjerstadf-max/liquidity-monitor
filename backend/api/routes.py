@@ -1,86 +1,318 @@
-from __future__ import annotations
-
 from fastapi import APIRouter, Query
 
-from backend.services.daily_snapshot import build_daily_snapshot
-from backend.services.funding_history import get_funding_history
+from backend.services.daily_snapshot import (
+    build_daily_snapshot,
+)
+from backend.services.funding_history import (
+    get_funding_history,
+)
 
 
 router = APIRouter(
     prefix="/api",
-    tags=["Liquidity Monitor API"],
+    tags=["Liquidity Monitor"],
 )
 
 
 @router.get("/snapshot")
-def snapshot():
-    current = build_daily_snapshot()
+def get_snapshot():
+
+    snapshot = build_daily_snapshot()
+
+    system_assessment = (
+        snapshot.assessment.system_liquidity
+    )
+
+    if system_assessment is None:
+        raise RuntimeError(
+            "System Liquidity assessment is missing."
+        )
+
 
     return {
-        "generated_at": current.generated_at.isoformat(),
+        "generated_at":
+            snapshot.generated_at.isoformat(),
 
         "assessment": {
-            "score": current.assessment.overall_score,
-            "condition": current.assessment.overall_condition,
-            "confidence": current.assessment.confidence,
+            "overall_score":
+                snapshot.assessment.overall_score,
+
+            "overall_condition":
+                snapshot.assessment.overall_condition,
+
+            "confidence":
+                snapshot.assessment.confidence,
+
+            "summary":
+                snapshot.assessment.summary,
 
             "funding": {
-                "score": current.assessment.funding.score,
-                "condition": current.assessment.funding.condition,
-                "confidence": current.assessment.funding.confidence,
-                "summary": current.assessment.funding.summary,
+                "score":
+                    snapshot.assessment.funding.score,
+
+                "condition":
+                    snapshot.assessment.funding.condition,
+
+                "confidence":
+                    snapshot.assessment.funding.confidence,
+
+                "summary":
+                    snapshot.assessment.funding.summary,
+            },
+
+            "system_liquidity": {
+                "score":
+                    system_assessment.score,
+
+                "condition":
+                    system_assessment.condition,
+
+                "confidence":
+                    system_assessment.confidence,
+
+                "summary":
+                    system_assessment.summary,
             },
         },
 
+
         "funding": {
-            "observation_date": (
-                current.funding.observation_date.isoformat()
-            ),
+            "observation_date":
+                snapshot.funding
+                .observation_date
+                .isoformat(),
 
-            "previous_observation_date": (
-                current.funding
+            "previous_observation_date":
+                snapshot.funding
                 .previous_observation_date
-                .isoformat()
-            ),
+                .isoformat(),
 
-            "sofr": float(current.funding.sofr),
+            "sofr":
+                float(
+                    snapshot.funding.sofr
+                ),
 
-            "previous_sofr": float(
-                current.funding.previous_sofr
-            ),
+            "previous_sofr":
+                float(
+                    snapshot.funding.previous_sofr
+                ),
 
-            "sofr_change_bp": float(
-                current.funding.sofr_change_bp
-            ),
+            "sofr_change_bp":
+                float(
+                    snapshot.funding.sofr_change_bp
+                ),
 
-            "effr": float(current.funding.effr),
+            "effr":
+                float(
+                    snapshot.funding.effr
+                ),
 
-            "previous_effr": float(
-                current.funding.previous_effr
-            ),
+            "previous_effr":
+                float(
+                    snapshot.funding.previous_effr
+                ),
 
-            "effr_change_bp": float(
-                current.funding.effr_change_bp
-            ),
+            "effr_change_bp":
+                float(
+                    snapshot.funding.effr_change_bp
+                ),
 
-            "spread_bp": float(
-                current.funding.spread_basis_points
-            ),
+            "spread_basis_points":
+                float(
+                    snapshot.funding
+                    .spread_basis_points
+                ),
 
-            "previous_spread_bp": float(
-                current.funding.previous_spread_basis_points
-            ),
+            "previous_spread_basis_points":
+                float(
+                    snapshot.funding
+                    .previous_spread_basis_points
+                ),
 
-            "spread_change_bp": float(
-                current.funding.spread_change_bp
-            ),
+            "spread_change_bp":
+                float(
+                    snapshot.funding
+                    .spread_change_bp
+                ),
         },
 
+
+        "spread_statistics": {
+            "observations_used":
+                snapshot.spread_statistics
+                .observations_used,
+
+            "current_spread_bp":
+                float(
+                    snapshot.spread_statistics
+                    .current_spread_bp
+                ),
+
+            "average_30d_bp":
+                float(
+                    snapshot.spread_statistics
+                    .average_30d_bp
+                ),
+
+            "average_60d_bp":
+                float(
+                    snapshot.spread_statistics
+                    .average_60d_bp
+                ),
+
+            "minimum_60d_bp":
+                float(
+                    snapshot.spread_statistics
+                    .minimum_60d_bp
+                ),
+
+            "maximum_60d_bp":
+                float(
+                    snapshot.spread_statistics
+                    .maximum_60d_bp
+                ),
+
+            "percentile_60d":
+                snapshot.spread_statistics
+                .percentile_60d,
+
+            "zscore_60d":
+                snapshot.spread_statistics
+                .zscore_60d,
+        },
+
+
+        "system_liquidity": {
+            "observation_date":
+                snapshot.system_liquidity
+                .observation_date
+                .isoformat(),
+
+            "reserve_balances_billions":
+                float(
+                    snapshot.system_liquidity
+                    .reserve_balances_billions
+                ),
+
+            "on_rrp_billions":
+                float(
+                    snapshot.system_liquidity
+                    .on_rrp_billions
+                ),
+
+            "tga_billions":
+                float(
+                    snapshot.system_liquidity
+                    .tga_billions
+                ),
+
+            "net_liquidity_proxy_billions":
+                float(
+                    snapshot.system_liquidity
+                    .net_liquidity_proxy_billions
+                ),
+
+            "weekly_change_billions":
+                float(
+                    snapshot.system_liquidity
+                    .weekly_change_billions
+                ),
+
+            "four_week_change_billions":
+                float(
+                    snapshot.system_liquidity
+                    .four_week_change_billions
+                ),
+
+            "reserve_4_week_contribution_billions":
+                float(
+                    snapshot.system_liquidity
+                    .reserve_4_week_contribution_billions
+                ),
+
+            "rrp_4_week_contribution_billions":
+                float(
+                    snapshot.system_liquidity
+                    .rrp_4_week_contribution_billions
+                ),
+
+            "tga_4_week_contribution_billions":
+                float(
+                    snapshot.system_liquidity
+                    .tga_4_week_contribution_billions
+                ),
+        },
+
+
+        "system_liquidity_history": {
+            "observations_used":
+                snapshot.system_liquidity_history
+                .observations_used,
+
+            "current_proxy_billions":
+                float(
+                    snapshot.system_liquidity_history
+                    .current_proxy_billions
+                ),
+
+            "four_week_change_billions":
+                float(
+                    snapshot.system_liquidity_history
+                    .four_week_change_billions
+                ),
+
+            "thirteen_week_change_billions":
+                float(
+                    snapshot.system_liquidity_history
+                    .thirteen_week_change_billions
+                ),
+
+            "average_13_week_billions":
+                float(
+                    snapshot.system_liquidity_history
+                    .average_13_week_billions
+                ),
+
+            "average_52_week_billions":
+                float(
+                    snapshot.system_liquidity_history
+                    .average_52_week_billions
+                ),
+
+            "minimum_52_week_billions":
+                float(
+                    snapshot.system_liquidity_history
+                    .minimum_52_week_billions
+                ),
+
+            "maximum_52_week_billions":
+                float(
+                    snapshot.system_liquidity_history
+                    .maximum_52_week_billions
+                ),
+
+            "percentile_52_week":
+                snapshot.system_liquidity_history
+                .percentile_52_week,
+
+            "zscore_52_week":
+                snapshot.system_liquidity_history
+                .zscore_52_week,
+        },
+
+
         "morning_brief": {
-            "headline": current.morning_brief.headline,
-            "summary": current.morning_brief.summary,
-            "what_matters": current.morning_brief.what_matters,
-            "what_to_watch": current.morning_brief.what_to_watch,
+            "headline":
+                snapshot.morning_brief.headline,
+
+            "summary":
+                snapshot.morning_brief.summary,
+
+            "what_matters":
+                snapshot.morning_brief.what_matters,
+
+            "what_to_watch":
+                snapshot.morning_brief.what_to_watch,
         },
     }
 
@@ -89,22 +321,31 @@ def snapshot():
 def funding_history(
     observations: int = Query(
         default=60,
-        ge=1,
-        le=1000,
-    ),
+        ge=2,
+        le=500,
+    )
 ):
+
     history = get_funding_history(
         observation_count=observations
     )
 
     return [
         {
-            "date": point.observation_date.isoformat(),
-            "sofr": float(point.sofr),
-            "effr": float(point.effr),
-            "spread_bp": float(
-                point.spread_basis_points
-            ),
+            "date":
+                point.observation_date
+                .isoformat(),
+
+            "sofr":
+                float(point.sofr),
+
+            "effr":
+                float(point.effr),
+
+            "spread_bp":
+                float(
+                    point.spread_basis_points
+                ),
         }
         for point in history
     ]

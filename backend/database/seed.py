@@ -41,6 +41,22 @@ def seed_database() -> None:
                 "frequency": "Daily",
                 "units": "Percent",
             },
+
+            {
+                "symbol": "reserve_balances",
+                "name": "Reserve Balances with Federal Reserve Banks",
+                "category": "Funding",
+                "frequency": "Daily",
+                "units": "USD Billions",
+            },
+            {   
+                "symbol": "tga",
+                "name": "U.S. Treasury General Account",
+                "category": "Funding",
+                "frequency": "Daily",
+                "units": "USD Billions",
+            },
+
         ]
 
         for definition in indicator_definitions:

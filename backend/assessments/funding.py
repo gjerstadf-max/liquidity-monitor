@@ -27,12 +27,12 @@ SEVERITY_CONFIDENCE = {
 
 
 def assess_funding() -> Assessment:
-    signal = evaluate_funding_signal()
+    """
+    Convert the deterministic funding signal into
+    a scored funding assessment.
+    """
 
-    if signal.severity not in SEVERITY_SCORE:
-        raise RuntimeError(
-            f"Unsupported funding signal severity: {signal.severity}"
-        )
+    signal = evaluate_funding_signal()
 
     return Assessment(
         category="Funding",

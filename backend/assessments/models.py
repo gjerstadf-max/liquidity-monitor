@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 
@@ -10,9 +12,6 @@ class Assessment:
     summary: str
 
 
-from dataclasses import dataclass
-
-
 @dataclass(frozen=True)
 class LiquidityAssessment:
     overall_score: int
@@ -22,3 +21,7 @@ class LiquidityAssessment:
     funding: Assessment
 
     summary: str
+
+    # Optional for backward compatibility with
+    # existing homepage/commentary code.
+    system_liquidity: Assessment | None = None
