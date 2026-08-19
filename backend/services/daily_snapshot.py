@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
@@ -26,8 +26,8 @@ from backend.metrics.system_liquidity import (
     system_liquidity_history_metrics,
     system_liquidity_metrics,
 )
-from backend.news.narrative import (
-    build_market_narrative,
+from backend.news.storage import (
+    load_latest_market_narrative,
 )
 from backend.services.freshness import (
     DataFreshness,
@@ -67,58 +67,66 @@ class DailySnapshot:
 
 
 def _empty_news_overlay(
-    status: str = "Not requested",
+    status: str = "No stored snapshot",
 ) -> dict[str, Any]:
-    """
-    Return a predictable empty news-overlay structure.
-
-    The core liquidity snapshot must remain available
-    regardless of whether the external news feed is
-    requested or available.
-    """
 
     return {
         "available": False,
+
         "status": status,
-        "market_attention": "Unavailable",
-        "directional_confirmation": "Unavailable",
+
+        "market_attention":
+            "Unavailable",
+
+        "directional_confirmation":
+            "Unavailable",
+
         "summary": (
-            "Market-news overlay is not available "
-            "for this snapshot."
+            "No stored market-news snapshot "
+            "is currently available."
         ),
+
         "stories": [],
     }
 
 
-def _build_news_overlay() -> dict[str, Any]:
+def _load_news_overlay(
+) -> dict[str, Any]:
     """
-    Build the market-news overlay.
+    Load the latest stored news assessment.
 
-    News is intentionally treated as a secondary
-    contextual layer. Failure of the external news
-    source must never break the quantitative
-    Liquidity Monitor snapshot.
+    This function deliberately makes no external
+    network calls. News collection happens only
+    inside the scheduled news-refresh job.
     """
 
     try:
-        narrative = build_market_narrative(
-            final_limit=6
+
+        narrative = (
+            load_latest_market_narrative()
         )
 
-        return {
-            "available": True,
-            "status": "Available",
-            **asdict(narrative),
-        }
+
+        if narrative is None:
+
+            return (
+                _empty_news_overlay()
+            )
+
+
+        return narrative
+
 
     except Exception as exc:
+
         print(
-            "News overlay unavailable: "
+            "Stored news overlay unavailable: "
             f"{exc}"
         )
 
+
         return _empty_news_overlay(
-            status="Feed unavailable"
+            status="Database unavailable"
         )
 
 
@@ -130,15 +138,6 @@ def _build_news_overlay() -> dict[str, Any]:
 def build_daily_snapshot(
     include_news: bool = False,
 ) -> DailySnapshot:
-    """
-    Build the canonical Liquidity Monitor snapshot.
-
-    This object is shared by the frontend and API.
-
-    News is optional because it depends on an external
-    source. The quantitative liquidity system remains
-    fully operational if the news feed is unavailable.
-    """
 
     # ---------------------------------------------------------
     # FUNDING
@@ -198,17 +197,21 @@ def build_daily_snapshot(
 
 
     # ---------------------------------------------------------
-    # MARKET NEWS OVERLAY
+    # STORED MARKET NEWS
     # ---------------------------------------------------------
 
     if include_news:
+
         market_narrative = (
-            _build_news_overlay()
+            _load_news_overlay()
         )
 
     else:
+
         market_narrative = (
-            _empty_news_overlay()
+            _empty_news_overlay(
+                status="Not requested"
+            )
         )
 
 
