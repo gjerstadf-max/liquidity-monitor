@@ -17,7 +17,9 @@ router = APIRouter(
 @router.get("/snapshot")
 def get_snapshot():
 
-    snapshot = build_daily_snapshot()
+    snapshot = build_daily_snapshot(
+        include_news=True
+    )
 
     system_assessment = (
         snapshot.assessment.system_liquidity
@@ -313,7 +315,11 @@ def get_snapshot():
 
             "what_to_watch":
                 snapshot.morning_brief.what_to_watch,
+
         },
+
+        "market_narrative":
+            snapshot.market_narrative,
     }
 
 

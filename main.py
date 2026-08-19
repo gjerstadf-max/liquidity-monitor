@@ -39,7 +39,9 @@ def health() -> dict[str, str]:
 
 @app.get("/")
 def home(request: Request):
-    snapshot = build_daily_snapshot()
+    snapshot = build_daily_snapshot(
+        include_news=True
+    )
 
     return templates.TemplateResponse(
         request=request,

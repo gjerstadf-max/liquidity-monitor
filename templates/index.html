@@ -13,7 +13,7 @@
 
     <link
         rel="stylesheet"
-        href="/static/css/styles.css?v=20260818-3"
+        href="/static/css/styles.css?v=20260818-1"
     >
 </head>
 
@@ -129,7 +129,198 @@
 
     </section>
 
+    <!-- ======================================================
+         MARKET NEWS OVERLAY
+         ====================================================== -->
 
+    <section class="news-overlay">
+
+        <div class="news-header">
+
+            <div>
+                <h2>Market News Overlay</h2>
+
+                <div class="section-subtitle">
+                    Market reporting relative to current
+                    Liquidity Monitor signals. News provides
+                    context only and does not affect the
+                    quantitative score.
+                </div>
+            </div>
+
+            {% if snapshot.market_narrative.available %}
+
+            <div class="news-status">
+                News feed current
+            </div>
+
+            {% endif %}
+
+        </div>
+
+
+        {% if snapshot.market_narrative.available %}
+
+        <div class="news-signal-grid">
+
+            <div class="news-signal">
+
+                <div class="news-signal-label">
+                    Market Attention
+                </div>
+
+                <div class="news-signal-value">
+                    {{ snapshot.market_narrative.market_attention }}
+                </div>
+
+                <div class="news-signal-description">
+                    Degree to which current reporting is focused
+                    on liquidity-related risks, mechanisms,
+                    or policy responses.
+                </div>
+
+            </div>
+
+
+            <div class="news-signal">
+
+                <div class="news-signal-label">
+                    Directional Confirmation
+                </div>
+
+                <div class="news-signal-value">
+                    {{ snapshot.market_narrative.directional_confirmation }}
+                </div>
+
+                <div class="news-signal-description">
+                    Whether current reporting directly confirms
+                    or contradicts the direction of quantitative
+                    liquidity signals.
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="news-summary">
+            {{ snapshot.market_narrative.summary }}
+        </div>
+
+
+        {% if snapshot.market_narrative.stories %}
+
+        <div class="news-stories">
+
+            <div class="news-stories-heading">
+                Relevant Market Coverage
+            </div>
+
+
+            {% for story in snapshot.market_narrative.stories[:3] %}
+
+            <article class="news-story">
+
+                <div class="news-story-meta">
+
+                    <span class="news-source">
+                        {{ story.ranked_article.article.source }}
+                    </span>
+
+                    <span class="news-separator">
+                        •
+                    </span>
+
+                    <span class="news-topic">
+                        {{ story.ranked_article.article.topic }}
+                    </span>
+
+                    <span
+                        class="story-type
+                        {% if story.story_type == 'Structural Risk' %}
+                            story-type-risk
+                        {% elif story.story_type == 'Policy Response' %}
+                            story-type-policy
+                        {% elif story.story_type == 'Current Stress' %}
+                            story-type-stress
+                        {% elif story.story_type == 'Easing' %}
+                            story-type-easing
+                        {% else %}
+                            story-type-background
+                        {% endif %}"
+                    >
+                        {{ story.story_type }}
+                    </span>
+
+                </div>
+
+
+                <a
+                    class="news-story-title"
+                    href="{{ story.ranked_article.article.url }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    {{ story.ranked_article.article.title }}
+                </a>
+
+
+                <div class="news-story-context">
+
+                    {% if story.matched_signal %}
+
+                    Related signal:
+                    <strong>
+                        {{ story.matched_signal }}
+                    </strong>
+
+                    {% else %}
+
+                    Broader market context
+
+                    {% endif %}
+
+
+                    {% if story.directional_relationship != "NOT_DIRECTIONAL" %}
+
+                    <span class="news-separator">
+                        •
+                    </span>
+
+                    {{ story.directional_relationship }}
+
+                    {% endif %}
+
+                </div>
+
+            </article>
+
+            {% endfor %}
+
+        </div>
+
+        {% endif %}
+
+
+        {% else %}
+
+        <div class="news-unavailable">
+
+            <strong>
+                Market news temporarily unavailable.
+            </strong>
+
+            <span>
+                Quantitative liquidity monitoring remains
+                fully operational.
+            </span>
+
+        </div>
+
+        {% endif %}
+
+    </section>
+    
     <!-- ======================================================
          LIQUIDITY COMPONENTS
          ====================================================== -->
