@@ -1,19 +1,13 @@
 from backend.assessments.models import Assessment
-from backend.signals.funding import evaluate_funding_signal
+from backend.signals.funding import (
+    evaluate_funding_signal,
+)
 
 
-SEVERITY_SCORE = {
-    "Normal": 95,
-    "Watch": 75,
-    "Warning": 45,
-    "Critical": 20,
-}
-
-
-SEVERITY_CONDITION = {
-    "Normal": "Healthy",
+SEVERITY_VERDICT = {
+    "Normal": "Normal",
     "Watch": "Watch",
-    "Warning": "Warning",
+    "Warning": "Elevated",
     "Critical": "Stressed",
 }
 
@@ -27,17 +21,26 @@ SEVERITY_CONFIDENCE = {
 
 
 def assess_funding() -> Assessment:
-    """
-    Convert the deterministic funding signal into
-    a scored funding assessment.
-    """
 
-    signal = evaluate_funding_signal()
+    signal = (
+        evaluate_funding_signal()
+    )
+
 
     return Assessment(
-        category="Funding",
-        score=SEVERITY_SCORE[signal.severity],
-        condition=SEVERITY_CONDITION[signal.severity],
-        confidence=SEVERITY_CONFIDENCE[signal.severity],
-        summary=signal.message,
+        category=
+            "Funding Conditions",
+
+        verdict=
+            SEVERITY_VERDICT[
+                signal.severity
+            ],
+
+        confidence=
+            SEVERITY_CONFIDENCE[
+                signal.severity
+            ],
+
+        summary=
+            signal.message,
     )

@@ -1,6 +1,6 @@
 from backend.assessments.models import Assessment
-from backend.signals.system_liquidity import (
-    evaluate_system_liquidity_signal,
+from backend.signals.repo_market import (
+    evaluate_repo_market_signal,
 )
 
 
@@ -13,23 +13,23 @@ SEVERITY_VERDICT = {
 
 
 SEVERITY_CONFIDENCE = {
-    "Normal": "Moderate",
+    "Normal": "High",
     "Watch": "Moderate",
     "Warning": "High",
     "Critical": "High",
 }
 
 
-def assess_system_liquidity() -> Assessment:
+def assess_repo_market() -> Assessment:
 
     signal = (
-        evaluate_system_liquidity_signal()
+        evaluate_repo_market_signal()
     )
 
 
     return Assessment(
         category=
-            "System Liquidity",
+            "Repo Market Pressure",
 
         verdict=
             SEVERITY_VERDICT[

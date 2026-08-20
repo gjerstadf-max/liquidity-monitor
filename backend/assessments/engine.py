@@ -2,61 +2,128 @@ from backend.assessments.funding import (
     assess_funding,
 )
 from backend.assessments.models import (
+    Assessment,
     LiquidityAssessment,
+)
+from backend.assessments.repo_market import (
+    assess_repo_market,
 )
 from backend.assessments.system_liquidity import (
     assess_system_liquidity,
 )
 
 
-def _overall_condition(
-    score: int,
+VERDICT_RANK = {
+    "Normal": 0,
+    "Watch": 1,
+    "Elevated": 2,
+    "Stressed": 3,
+}
+
+
+CONFIDENCE_RANK = {
+    "Low": 1,
+    "Moderate": 2,
+    "High": 3,
+}
+
+
+# =============================================================
+# OVERALL VERDICT
+# =============================================================
+
+
+def _overall_verdict(
+    assessments: list[
+        Assessment
+    ],
 ) -> str:
     """
-    Convert the composite score into a headline
-    liquidity condition.
+    Produce a qualitative overall conclusion.
+
+    No weighted average is used.
+
+    Principles:
+
+    - Any Watch deserves monitoring.
+    - Any Elevated factor makes the overall picture Elevated.
+    - One isolated Stressed factor produces Elevated unless
+      another factor provides confirmation.
+    - Stressed conditions with confirmation from another
+      factor produce an overall Stressed verdict.
     """
 
-    if score >= 90:
-        return "Healthy"
+    verdicts = [
+        assessment.verdict
+        for assessment
+        in assessments
+    ]
 
-    if score >= 80:
-        return "Normal"
 
-    if score >= 65:
+    stressed = verdicts.count(
+        "Stressed"
+    )
+
+    elevated = verdicts.count(
+        "Elevated"
+    )
+
+    watch = verdicts.count(
+        "Watch"
+    )
+
+
+    if stressed >= 2:
+
+        return "Stressed"
+
+
+    if stressed == 1:
+
+        if (
+            elevated >= 1
+            or
+            watch >= 1
+        ):
+
+            return "Stressed"
+
+        return "Elevated"
+
+
+    if elevated >= 1:
+
+        return "Elevated"
+
+
+    if watch >= 1:
+
         return "Watch"
 
-    if score >= 40:
-        return "Warning"
 
-    return "Stressed"
+    return "Normal"
+
+
+# =============================================================
+# CONFIDENCE
+# =============================================================
 
 
 def _overall_confidence(
-    funding_confidence: str,
-    liquidity_confidence: str,
+    assessments: list[
+        Assessment
+    ],
 ) -> str:
-    """
-    Overall confidence cannot exceed the weakest
-    major component.
-    """
-
-    confidence_rank = {
-        "Low": 1,
-        "Moderate": 2,
-        "High": 3,
-    }
 
     lowest = min(
-        confidence_rank.get(
-            funding_confidence,
+        CONFIDENCE_RANK.get(
+            assessment.confidence,
             1,
-        ),
-        confidence_rank.get(
-            liquidity_confidence,
-            1,
-        ),
+        )
+        for assessment
+        in assessments
     )
+
 
     reverse_rank = {
         1: "Low",
@@ -64,81 +131,194 @@ def _overall_confidence(
         3: "High",
     }
 
-    return reverse_rank[lowest]
+
+    return reverse_rank[
+        lowest
+    ]
+
+
+# =============================================================
+# OVERALL NARRATIVE
+# =============================================================
+
+
+def _overall_summary(
+    funding: Assessment,
+    system: Assessment,
+    repo: Assessment,
+    overall_verdict: str,
+) -> str:
+
+    # ---------------------------------------------------------
+    # ALL NORMAL
+    # ---------------------------------------------------------
+
+    if overall_verdict == "Normal":
+
+        return (
+            "The major liquidity indicators are broadly "
+            "consistent with orderly market conditions."
+        )
+
+
+    # ---------------------------------------------------------
+    # TIGHTENING, BUT REPO STILL ORDERLY
+    # ---------------------------------------------------------
+
+    if (
+        repo.verdict == "Normal"
+        and
+        (
+            funding.verdict != "Normal"
+            or
+            system.verdict != "Normal"
+        )
+    ):
+
+        return (
+            "Liquidity conditions are becoming less "
+            "comfortable, but secured funding markets "
+            "remain orderly. The current evidence points "
+            "to tightening liquidity rather than broad "
+            "market dysfunction."
+        )
+
+
+    # ---------------------------------------------------------
+    # ISOLATED SEVERE FACTOR
+    # ---------------------------------------------------------
+
+    stressed_factors = [
+        assessment.category
+        for assessment
+        in [
+            funding,
+            system,
+            repo,
+        ]
+        if assessment.verdict
+        == "Stressed"
+    ]
+
+
+    if (
+        len(
+            stressed_factors
+        ) == 1
+        and
+        overall_verdict == "Elevated"
+    ):
+
+        return (
+            f"Severe pressure is currently concentrated "
+            f"in {stressed_factors[0]}, while the other "
+            "major liquidity factors do not yet provide "
+            "broad confirmation."
+        )
+
+
+    # ---------------------------------------------------------
+    # CONFIRMED STRESS
+    # ---------------------------------------------------------
+
+    if overall_verdict == "Stressed":
+
+        return (
+            "Stress is being confirmed across more than "
+            "one liquidity channel, indicating broader "
+            "market pressure rather than an isolated "
+            "signal."
+        )
+
+
+    # ---------------------------------------------------------
+    # GENERAL ELEVATED
+    # ---------------------------------------------------------
+
+    if overall_verdict == "Elevated":
+
+        return (
+            "One or more liquidity channels are showing "
+            "material pressure. Conditions remain functional, "
+            "but the evidence is stronger than a routine "
+            "monitoring signal."
+        )
+
+
+    # ---------------------------------------------------------
+    # WATCH
+    # ---------------------------------------------------------
+
+    return (
+        "One or more liquidity indicators warrant closer "
+        "monitoring, but there is not currently evidence "
+        "of broad market stress."
+    )
+
+# =============================================================
+# ASSESSMENT
+# =============================================================
 
 
 def build_liquidity_assessment(
 ) -> LiquidityAssessment:
-    """
-    Build the first multi-factor Liquidity Monitor
-    assessment.
 
-    Current weights:
+    funding = (
+        assess_funding()
+    )
 
-        Funding Conditions    50%
-        System Liquidity      50%
-
-    These weights are intentionally simple and
-    transparent while the framework is still growing.
-    """
-
-    funding = assess_funding()
 
     system_liquidity = (
         assess_system_liquidity()
     )
 
 
-    # ---------------------------------------------------------
-    # Composite score
-    # ---------------------------------------------------------
-
-    overall_score = round(
-        (
-            funding.score
-            + system_liquidity.score
-        )
-        / 2
+    repo_market = (
+        assess_repo_market()
     )
 
 
-    overall_condition = (
-        _overall_condition(
-            overall_score
+    components = [
+        funding,
+        system_liquidity,
+        repo_market,
+    ]
+
+
+    overall_verdict = (
+        _overall_verdict(
+            components
         )
     )
 
 
     confidence = (
         _overall_confidence(
-            funding.confidence,
-            system_liquidity.confidence,
+            components
         )
     )
 
 
-    # ---------------------------------------------------------
-    # Summary
-    # ---------------------------------------------------------
-
     summary = (
-        f"Funding conditions are "
-        f"{funding.condition.lower()} "
-        f"with a score of "
-        f"{funding.score}/100. "
-        f"System liquidity is "
-        f"{system_liquidity.condition.lower()} "
-        f"with a score of "
-        f"{system_liquidity.score}/100."
+        _overall_summary(
+            funding=
+                funding,
+
+            system=
+                system_liquidity,
+
+            repo=
+                repo_market,
+
+            overall_verdict=
+                overall_verdict,
+        )
     )
 
 
     return LiquidityAssessment(
-        overall_score=
-            overall_score,
-
-        overall_condition=
-            overall_condition,
+        overall_verdict=
+            overall_verdict,
 
         confidence=
             confidence,
@@ -149,9 +329,17 @@ def build_liquidity_assessment(
         system_liquidity=
             system_liquidity,
 
+        repo_market=
+            repo_market,
+
         summary=
             summary,
     )
+
+
+# =============================================================
+# TERMINAL DISPLAY
+# =============================================================
 
 
 def run_assessment() -> None:
@@ -162,22 +350,20 @@ def run_assessment() -> None:
 
 
     print()
-    print("Liquidity Monitor Assessment")
-    print("================================")
+    print(
+        "Liquidity Monitor Assessment"
+    )
+
+    print("=" * 72)
 
 
     print()
-    print("OVERALL")
-    print("--------------------------------")
+    print("OVERALL CONCLUSION")
+    print("-" * 72)
 
     print(
-        f"Score:       "
-        f"{assessment.overall_score}/100"
-    )
-
-    print(
-        f"Condition:   "
-        f"{assessment.overall_condition}"
+        f"Verdict:     "
+        f"{assessment.overall_verdict}"
     )
 
     print(
@@ -185,54 +371,41 @@ def run_assessment() -> None:
         f"{assessment.confidence}"
     )
 
-
     print()
-    print("FUNDING")
-    print("--------------------------------")
-
-    print(
-        f"Score:       "
-        f"{assessment.funding.score}/100"
-    )
-
-    print(
-        f"Condition:   "
-        f"{assessment.funding.condition}"
-    )
-
-    print(
-        f"Confidence:  "
-        f"{assessment.funding.confidence}"
-    )
-
-
-    print()
-    print("SYSTEM LIQUIDITY")
-    print("--------------------------------")
-
-    print(
-        f"Score:       "
-        f"{assessment.system_liquidity.score}/100"
-    )
-
-    print(
-        f"Condition:   "
-        f"{assessment.system_liquidity.condition}"
-    )
-
-    print(
-        f"Confidence:  "
-        f"{assessment.system_liquidity.confidence}"
-    )
-
-
-    print()
-    print("SUMMARY")
-    print("--------------------------------")
 
     print(
         assessment.summary
     )
+
+
+    for component in [
+        assessment.funding,
+        assessment.system_liquidity,
+        assessment.repo_market,
+    ]:
+
+        print()
+        print(
+            component.category.upper()
+        )
+
+        print("-" * 72)
+
+        print(
+            f"Verdict:     "
+            f"{component.verdict}"
+        )
+
+        print(
+            f"Confidence:  "
+            f"{component.confidence}"
+        )
+
+        print()
+
+        print(
+            component.summary
+        )
 
 
 if __name__ == "__main__":

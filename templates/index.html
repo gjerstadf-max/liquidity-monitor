@@ -39,15 +39,15 @@
 
         <div class="score-row">
 
-            <div class="score">
-                {{ snapshot.assessment.overall_score }}/100
-            </div>
-
             <div class="condition">
-                {{ snapshot.assessment.overall_condition }}
+                {{ snapshot.assessment.overall_verdict }}
             </div>
 
         </div>
+
+        <p>
+            {{ snapshot.assessment.summary }}
+        </p>
 
         <div class="confidence">
             Confidence:
@@ -70,7 +70,7 @@
                 </strong>
             </div>
 
-            <div 
+            <div
                 class="{% if snapshot.funding_freshness.is_current %}
                         status-current
                     {% else %}
@@ -92,7 +92,9 @@
 
     <section class="brief">
 
-        <h2>Morning Liquidity Brief</h2>
+        <h2>
+            Morning Liquidity Brief
+        </h2>
 
         <div class="headline">
             {{ snapshot.morning_brief.headline }}
@@ -106,7 +108,9 @@
 
             <div class="brief-box">
 
-                <h3>What Matters</h3>
+                <h3>
+                    What Matters
+                </h3>
 
                 <p>
                     {{ snapshot.morning_brief.what_matters }}
@@ -117,7 +121,9 @@
 
             <div class="brief-box">
 
-                <h3>What To Watch</h3>
+                <h3>
+                    What To Watch
+                </h3>
 
                 <p>
                     {{ snapshot.morning_brief.what_to_watch }}
@@ -129,6 +135,7 @@
 
     </section>
 
+
     <!-- ======================================================
          MARKET NEWS OVERLAY
          ====================================================== -->
@@ -138,14 +145,18 @@
         <div class="news-header">
 
             <div>
-                <h2>Market News Overlay</h2>
+
+                <h2>
+                    Market News Overlay
+                </h2>
 
                 <div class="section-subtitle">
                     Market reporting relative to current
                     Liquidity Monitor signals. News provides
-                    context only and does not affect the
-                    quantitative score.
+                    context only and does not determine the
+                    quantitative liquidity signals.
                 </div>
+
             </div>
 
             {% if snapshot.market_narrative.available %}
@@ -270,6 +281,7 @@
                     {% if story.matched_signal %}
 
                     Related signal:
+
                     <strong>
                         {{ story.matched_signal }}
                     </strong>
@@ -320,22 +332,27 @@
         {% endif %}
 
     </section>
-    
+
+
     <!-- ======================================================
-         LIQUIDITY COMPONENTS
+         LIQUIDITY FACTORS
          ====================================================== -->
 
     <section class="funding-section">
 
-        <h2>Liquidity Components</h2>
+        <h2>
+            Liquidity Factors
+        </h2>
 
         <div class="section-subtitle">
-            Current component assessments underlying
-            the overall Liquidity Monitor score
+            Independent assessments underlying the
+            overall liquidity conclusion
         </div>
 
 
         <div class="cards">
+
+            <!-- FUNDING CONDITIONS -->
 
             <div class="card">
 
@@ -344,11 +361,11 @@
                 </div>
 
                 <div class="card-value">
-                    {{ snapshot.assessment.funding.score }}/100
+                    {{ snapshot.assessment.funding.verdict }}
                 </div>
 
                 <div class="card-change">
-                    {{ snapshot.assessment.funding.condition }}
+                    {{ snapshot.assessment.funding.summary }}
                 </div>
 
                 <div class="card-date">
@@ -359,6 +376,8 @@
             </div>
 
 
+            <!-- SYSTEM LIQUIDITY -->
+
             <div class="card">
 
                 <div class="card-title">
@@ -366,11 +385,11 @@
                 </div>
 
                 <div class="card-value">
-                    {{ snapshot.assessment.system_liquidity.score }}/100
+                    {{ snapshot.assessment.system_liquidity.verdict }}
                 </div>
 
                 <div class="card-change">
-                    {{ snapshot.assessment.system_liquidity.condition }}
+                    {{ snapshot.assessment.system_liquidity.summary }}
                 </div>
 
                 <div class="card-date">
@@ -381,44 +400,50 @@
             </div>
 
 
+            <!-- REPO MARKET PRESSURE -->
+
             <div class="card">
 
                 <div class="card-title">
-                    Overall Score
+                    Repo Market Pressure
                 </div>
 
                 <div class="card-value">
-                    {{ snapshot.assessment.overall_score }}/100
+                    {{ snapshot.assessment.repo_market.verdict }}
                 </div>
 
                 <div class="card-change">
-                    {{ snapshot.assessment.overall_condition }}
+                    {{ snapshot.assessment.repo_market.summary }}
                 </div>
 
                 <div class="card-date">
-                    Equal-weighted preliminary framework
+                    Confidence:
+                    {{ snapshot.assessment.repo_market.confidence }}
                 </div>
 
             </div>
 
 
+            <!-- OVERALL CONCLUSION -->
+
             <div class="card">
 
                 <div class="card-title">
-                    Overall Confidence
+                    Overall Conclusion
                 </div>
 
                 <div class="card-value">
-                    {{ snapshot.assessment.confidence }}
+                    {{ snapshot.assessment.overall_verdict }}
                 </div>
 
                 <div class="card-change">
-                    Current framework
+                    Qualitative synthesis of the
+                    independent liquidity factors
                 </div>
 
                 <div class="card-date">
-                    Confidence will evolve as additional
-                    indicators are added
+                    Confidence:
+                    {{ snapshot.assessment.confidence }}
                 </div>
 
             </div>
@@ -434,7 +459,9 @@
 
     <section class="funding-section">
 
-        <h2>Overnight Funding</h2>
+        <h2>
+            Overnight Funding
+        </h2>
 
         <div class="section-subtitle">
             Latest common SOFR and EFFR observation:
@@ -497,12 +524,16 @@
                 </div>
 
                 <div class="card-value">
-                    {{ "%+.0f"|format(snapshot.funding.spread_basis_points) }}
+                    {{ "%+.0f"|format(
+                        snapshot.funding.spread_basis_points
+                    ) }}
                     bp
                 </div>
 
                 <div class="card-change">
-                    {{ "%+.0f"|format(snapshot.funding.spread_change_bp) }}
+                    {{ "%+.0f"|format(
+                        snapshot.funding.spread_change_bp
+                    ) }}
                     bp from prior day
                 </div>
 
@@ -520,19 +551,20 @@
             <div class="card">
 
                 <div class="card-title">
-                    Funding Score
+                    Funding Verdict
                 </div>
 
                 <div class="card-value">
-                    {{ snapshot.assessment.funding.score }}/100
+                    {{ snapshot.assessment.funding.verdict }}
                 </div>
 
                 <div class="card-change">
-                    {{ snapshot.assessment.funding.condition }}
+                    Historically contextualized
                 </div>
 
                 <div class="card-date">
-                    Historically contextualized
+                    Confidence:
+                    {{ snapshot.assessment.funding.confidence }}
                 </div>
 
             </div>
@@ -548,7 +580,9 @@
 
     <section class="funding-section">
 
-        <h2>Historical Funding Context</h2>
+        <h2>
+            Historical Funding Context
+        </h2>
 
         <div class="section-subtitle">
             SOFR − EFFR relative to the most recent
@@ -586,14 +620,19 @@
                 </div>
 
                 <div class="card-value">
+
                     {{ "%+.0f"|format(
                         snapshot.spread_statistics.minimum_60d_bp
                     ) }}
+
                     to
+
                     {{ "%+.0f"|format(
                         snapshot.spread_statistics.maximum_60d_bp
                     ) }}
+
                     bp
+
                 </div>
 
                 <div class="card-change">
@@ -651,7 +690,9 @@
 
     <section class="funding-section">
 
-        <h2>System Liquidity Proxy</h2>
+        <h2>
+            System Liquidity Proxy
+        </h2>
 
         <div class="section-subtitle">
             Reserve Balances + ON RRP − TGA.
@@ -752,7 +793,9 @@
 
     <section class="funding-section">
 
-        <h2>System Liquidity Trend</h2>
+        <h2>
+            System Liquidity Trend
+        </h2>
 
         <div class="section-subtitle">
             Direction and historical position of the

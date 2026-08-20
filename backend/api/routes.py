@@ -36,11 +36,9 @@ def get_snapshot():
             snapshot.generated_at.isoformat(),
 
         "assessment": {
-            "overall_score":
-                snapshot.assessment.overall_score,
 
-            "overall_condition":
-                snapshot.assessment.overall_condition,
+            "overall_verdict":
+                snapshot.assessment.overall_verdict,
 
             "confidence":
                 snapshot.assessment.confidence,
@@ -48,32 +46,61 @@ def get_snapshot():
             "summary":
                 snapshot.assessment.summary,
 
-            "funding": {
-                "score":
-                    snapshot.assessment.funding.score,
 
-                "condition":
-                    snapshot.assessment.funding.condition,
+            "funding": {
+
+                "verdict":
+                    snapshot.assessment
+                    .funding
+                    .verdict,
 
                 "confidence":
-                    snapshot.assessment.funding.confidence,
+                    snapshot.assessment
+                    .funding
+                    .confidence,
 
                 "summary":
-                    snapshot.assessment.funding.summary,
+                    snapshot.assessment
+                    .funding
+                    .summary,
             },
 
-            "system_liquidity": {
-                "score":
-                    system_assessment.score,
 
-                "condition":
-                    system_assessment.condition,
+            "system_liquidity": {
+
+                "verdict":
+                    snapshot.assessment
+                    .system_liquidity
+                    .verdict,
 
                 "confidence":
-                    system_assessment.confidence,
+                    snapshot.assessment
+                    .system_liquidity
+                    .confidence,
 
                 "summary":
-                    system_assessment.summary,
+                    snapshot.assessment
+                    .system_liquidity
+                    .summary,
+            },
+
+
+            "repo_market": {
+
+                "verdict":
+                    snapshot.assessment
+                    .repo_market
+                    .verdict,
+
+                "confidence":
+                    snapshot.assessment
+                    .repo_market
+                    .confidence,
+
+                "summary":
+                    snapshot.assessment
+                    .repo_market
+                    .summary,
             },
         },
 
