@@ -5,6 +5,11 @@ import sys
 from datetime import datetime, timezone
 
 
+# =============================================================
+# DATA LOADERS
+# =============================================================
+
+
 LOADERS = [
     (
         "SOFR / EFFR",
@@ -22,7 +27,16 @@ LOADERS = [
         "Treasury General Account",
         "scripts.load_tga",
     ),
+    (
+        "Primary Dealer Treasury Data",
+        "scripts.load_primary_dealer_treasury",
+    ),
 ]
+
+
+# =============================================================
+# RUN ONE LOADER
+# =============================================================
 
 
 def run_loader(
@@ -30,7 +44,7 @@ def run_loader(
     module: str,
 ) -> None:
     """
-    Run one existing ingestion module using the
+    Run one ingestion module using the
     current Python interpreter.
 
     Stop immediately if the loader fails.
@@ -38,7 +52,11 @@ def run_loader(
 
     print()
     print("=" * 60)
-    print(f"Refreshing {name}")
+
+    print(
+        f"Refreshing {name}"
+    )
+
     print("=" * 60)
 
     result = subprocess.run(
@@ -58,9 +76,15 @@ def run_loader(
         )
 
     print()
+
     print(
         f"{name}: COMPLETE"
     )
+
+
+# =============================================================
+# DAILY REFRESH
+# =============================================================
 
 
 def daily_refresh() -> None:
@@ -68,14 +92,17 @@ def daily_refresh() -> None:
     Refresh all Liquidity Monitor data sources.
 
     Order:
+
         1. SOFR / EFFR
         2. ON RRP
         3. Reserve Balances
         4. Treasury General Account
+        5. Primary Dealer Treasury Data
 
-    Analytics do not require a separate refresh because
-    metrics, signals and assessments are calculated from
-    the database when requested.
+    Analytics do not require a separate refresh.
+
+    Metrics, signals, assessments and commentary are
+    calculated from the database when requested.
     """
 
     started_at = datetime.now(
@@ -83,7 +110,11 @@ def daily_refresh() -> None:
     )
 
     print()
-    print("Liquidity Monitor Daily Refresh")
+
+    print(
+        "Liquidity Monitor Daily Refresh"
+    )
+
     print("=" * 60)
 
     print(
@@ -91,14 +122,15 @@ def daily_refresh() -> None:
         f"{started_at.isoformat()}"
     )
 
+    completed: list[str] = []
 
-    completed = []
-
+    # =========================================================
+    # RUN LOADERS SEQUENTIALLY
+    # =========================================================
 
     for name, module in LOADERS:
 
         try:
-
             run_loader(
                 name=name,
                 module=module,
@@ -112,16 +144,23 @@ def daily_refresh() -> None:
 
             print()
             print("=" * 60)
-            print("DAILY REFRESH FAILED")
+
+            print(
+                "DAILY REFRESH FAILED"
+            )
+
             print("=" * 60)
 
             print()
+
             print(
-                f"Failed component: {name}"
+                f"Failed component: "
+                f"{name}"
             )
 
             print(
-                f"Error: {exc}"
+                f"Error: "
+                f"{exc}"
             )
 
             print()
@@ -138,22 +177,27 @@ def daily_refresh() -> None:
                     )
 
             else:
-
                 print(
                     "  None"
                 )
 
             raise
 
+    # =========================================================
+    # COMPLETE
+    # =========================================================
 
     completed_at = datetime.now(
         timezone.utc
     )
 
-
     print()
     print("=" * 60)
-    print("DAILY REFRESH COMPLETE")
+
+    print(
+        "DAILY REFRESH COMPLETE"
+    )
+
     print("=" * 60)
 
     print()
@@ -169,6 +213,11 @@ def daily_refresh() -> None:
         "Completed: "
         f"{completed_at.isoformat()}"
     )
+
+
+# =============================================================
+# DIRECT EXECUTION
+# =============================================================
 
 
 if __name__ == "__main__":

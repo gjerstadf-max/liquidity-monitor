@@ -13,9 +13,10 @@
 
     <link
         rel="stylesheet"
-        href="/static/css/styles.css?v=20260818-1"
+        href="/static/css/styles.css?v=20260821-1"
     >
 </head>
+
 
 <body>
 
@@ -54,6 +55,7 @@
             {{ snapshot.assessment.confidence }}
         </div>
 
+
         <div class="status-row">
 
             <div>
@@ -71,11 +73,13 @@
             </div>
 
             <div
-                class="{% if snapshot.funding_freshness.is_current %}
+                class="
+                    {% if snapshot.funding_freshness.is_current %}
                         status-current
                     {% else %}
                         status-stale
-                    {% endif %}"
+                    {% endif %}
+                "
             >
                 Funding status:
                 {{ snapshot.funding_freshness.label }}
@@ -104,6 +108,7 @@
             {{ snapshot.morning_brief.summary }}
         </p>
 
+
         <div class="brief-grid">
 
             <div class="brief-box">
@@ -112,9 +117,13 @@
                     What Matters
                 </h3>
 
-                <p>
-                    {{ snapshot.morning_brief.what_matters }}
-                </p>
+                {% for item in snapshot.morning_brief.what_matters %}
+
+                    <p>
+                        {{ item }}
+                    </p>
+
+                {% endfor %}
 
             </div>
 
@@ -125,9 +134,13 @@
                     What To Watch
                 </h3>
 
-                <p>
-                    {{ snapshot.morning_brief.what_to_watch }}
-                </p>
+                {% for item in snapshot.morning_brief.what_to_watch %}
+
+                    <p>
+                        {{ item }}
+                    </p>
+
+                {% endfor %}
 
             </div>
 
@@ -159,11 +172,12 @@
 
             </div>
 
+
             {% if snapshot.market_narrative.available %}
 
-            <div class="news-status">
-                News feed current
-            </div>
+                <div class="news-status">
+                    News feed current
+                </div>
 
             {% endif %}
 
@@ -172,162 +186,172 @@
 
         {% if snapshot.market_narrative.available %}
 
-        <div class="news-signal-grid">
 
-            <div class="news-signal">
+            <div class="news-signal-grid">
 
-                <div class="news-signal-label">
-                    Market Attention
+                <div class="news-signal">
+
+                    <div class="news-signal-label">
+                        Market Attention
+                    </div>
+
+                    <div class="news-signal-value">
+                        {{ snapshot.market_narrative.market_attention }}
+                    </div>
+
+                    <div class="news-signal-description">
+                        Degree to which current reporting is focused
+                        on liquidity-related risks, mechanisms,
+                        or policy responses.
+                    </div>
+
                 </div>
 
-                <div class="news-signal-value">
-                    {{ snapshot.market_narrative.market_attention }}
-                </div>
 
-                <div class="news-signal-description">
-                    Degree to which current reporting is focused
-                    on liquidity-related risks, mechanisms,
-                    or policy responses.
+                <div class="news-signal">
+
+                    <div class="news-signal-label">
+                        Directional Confirmation
+                    </div>
+
+                    <div class="news-signal-value">
+                        {{ snapshot.market_narrative.directional_confirmation }}
+                    </div>
+
+                    <div class="news-signal-description">
+                        Whether current reporting directly confirms
+                        or contradicts the direction of quantitative
+                        liquidity signals.
+                    </div>
+
                 </div>
 
             </div>
 
 
-            <div class="news-signal">
-
-                <div class="news-signal-label">
-                    Directional Confirmation
-                </div>
-
-                <div class="news-signal-value">
-                    {{ snapshot.market_narrative.directional_confirmation }}
-                </div>
-
-                <div class="news-signal-description">
-                    Whether current reporting directly confirms
-                    or contradicts the direction of quantitative
-                    liquidity signals.
-                </div>
-
-            </div>
-
-        </div>
-
-
-        <div class="news-summary">
-            {{ snapshot.market_narrative.summary }}
-        </div>
-
-
-        {% if snapshot.market_narrative.stories %}
-
-        <div class="news-stories">
-
-            <div class="news-stories-heading">
-                Relevant Market Coverage
+            <div class="news-summary">
+                {{ snapshot.market_narrative.summary }}
             </div>
 
 
-            {% for story in snapshot.market_narrative.stories[:3] %}
+            {% if snapshot.market_narrative.stories %}
 
-            <article class="news-story">
+                <div class="news-stories">
 
-                <div class="news-story-meta">
+                    <div class="news-stories-heading">
+                        Relevant Market Coverage
+                    </div>
 
-                    <span class="news-source">
-                        {{ story.ranked_article.article.source }}
-                    </span>
 
-                    <span class="news-separator">
-                        •
-                    </span>
+                    {% for story in snapshot.market_narrative.stories[:3] %}
 
-                    <span class="news-topic">
-                        {{ story.ranked_article.article.topic }}
-                    </span>
+                        <article class="news-story">
 
-                    <span
-                        class="story-type
-                        {% if story.story_type == 'Structural Risk' %}
-                            story-type-risk
-                        {% elif story.story_type == 'Policy Response' %}
-                            story-type-policy
-                        {% elif story.story_type == 'Current Stress' %}
-                            story-type-stress
-                        {% elif story.story_type == 'Easing' %}
-                            story-type-easing
-                        {% else %}
-                            story-type-background
-                        {% endif %}"
-                    >
-                        {{ story.story_type }}
-                    </span>
+                            <div class="news-story-meta">
+
+                                <span class="news-source">
+                                    {{ story.ranked_article.article.source }}
+                                </span>
+
+                                <span class="news-separator">
+                                    •
+                                </span>
+
+                                <span class="news-topic">
+                                    {{ story.ranked_article.article.topic }}
+                                </span>
+
+
+                                <span
+                                    class="
+                                        story-type
+
+                                        {% if story.story_type == 'Structural Risk' %}
+                                            story-type-risk
+
+                                        {% elif story.story_type == 'Policy Response' %}
+                                            story-type-policy
+
+                                        {% elif story.story_type == 'Current Stress' %}
+                                            story-type-stress
+
+                                        {% elif story.story_type == 'Easing' %}
+                                            story-type-easing
+
+                                        {% else %}
+                                            story-type-background
+
+                                        {% endif %}
+                                    "
+                                >
+                                    {{ story.story_type }}
+                                </span>
+
+                            </div>
+
+
+                            <a
+                                class="news-story-title"
+                                href="{{ story.ranked_article.article.url }}"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                {{ story.ranked_article.article.title }}
+                            </a>
+
+
+                            <div class="news-story-context">
+
+                                {% if story.matched_signal %}
+
+                                    Related signal:
+
+                                    <strong>
+                                        {{ story.matched_signal }}
+                                    </strong>
+
+                                {% else %}
+
+                                    Broader market context
+
+                                {% endif %}
+
+
+                                {% if story.directional_relationship != "NOT_DIRECTIONAL" %}
+
+                                    <span class="news-separator">
+                                        •
+                                    </span>
+
+                                    {{ story.directional_relationship }}
+
+                                {% endif %}
+
+                            </div>
+
+                        </article>
+
+                    {% endfor %}
 
                 </div>
 
-
-                <a
-                    class="news-story-title"
-                    href="{{ story.ranked_article.article.url }}"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                >
-                    {{ story.ranked_article.article.title }}
-                </a>
-
-
-                <div class="news-story-context">
-
-                    {% if story.matched_signal %}
-
-                    Related signal:
-
-                    <strong>
-                        {{ story.matched_signal }}
-                    </strong>
-
-                    {% else %}
-
-                    Broader market context
-
-                    {% endif %}
-
-
-                    {% if story.directional_relationship != "NOT_DIRECTIONAL" %}
-
-                    <span class="news-separator">
-                        •
-                    </span>
-
-                    {{ story.directional_relationship }}
-
-                    {% endif %}
-
-                </div>
-
-            </article>
-
-            {% endfor %}
-
-        </div>
-
-        {% endif %}
+            {% endif %}
 
 
         {% else %}
 
-        <div class="news-unavailable">
+            <div class="news-unavailable">
 
-            <strong>
-                Market news temporarily unavailable.
-            </strong>
+                <strong>
+                    Market news temporarily unavailable.
+                </strong>
 
-            <span>
-                Quantitative liquidity monitoring remains
-                fully operational.
-            </span>
+                <span>
+                    Quantitative liquidity monitoring remains
+                    fully operational.
+                </span>
 
-        </div>
+            </div>
 
         {% endif %}
 
@@ -424,6 +448,30 @@
             </div>
 
 
+            <!-- TREASURY INTERMEDIATION -->
+
+            <div class="card">
+
+                <div class="card-title">
+                    Treasury Intermediation
+                </div>
+
+                <div class="card-value">
+                    {{ snapshot.assessment.treasury_intermediation.verdict }}
+                </div>
+
+                <div class="card-change">
+                    {{ snapshot.assessment.treasury_intermediation.summary }}
+                </div>
+
+                <div class="card-date">
+                    Confidence:
+                    {{ snapshot.assessment.treasury_intermediation.confidence }}
+                </div>
+
+            </div>
+
+
             <!-- OVERALL CONCLUSION -->
 
             <div class="card">
@@ -438,7 +486,7 @@
 
                 <div class="card-change">
                     Qualitative synthesis of the
-                    independent liquidity factors
+                    four independent liquidity factors
                 </div>
 
                 <div class="card-date">
@@ -524,25 +572,35 @@
                 </div>
 
                 <div class="card-value">
+
                     {{ "%+.0f"|format(
                         snapshot.funding.spread_basis_points
                     ) }}
+
                     bp
+
                 </div>
 
                 <div class="card-change">
+
                     {{ "%+.0f"|format(
                         snapshot.funding.spread_change_bp
                     ) }}
+
                     bp from prior day
+
                 </div>
 
                 <div class="card-date">
+
                     Previous:
+
                     {{ "%+.0f"|format(
                         snapshot.funding.previous_spread_basis_points
                     ) }}
+
                     bp
+
                 </div>
 
             </div>
@@ -575,7 +633,7 @@
 
 
     <!-- ======================================================
-         FUNDING HISTORY CONTEXT
+         FUNDING HISTORY
          ====================================================== -->
 
     <section class="funding-section">
@@ -600,10 +658,13 @@
                 </div>
 
                 <div class="card-value">
+
                     {{ "%+.2f"|format(
                         snapshot.spread_statistics.average_30d_bp
                     ) }}
+
                     bp
+
                 </div>
 
                 <div class="card-change">
@@ -649,9 +710,11 @@
                 </div>
 
                 <div class="card-value">
+
                     {{ "%.0f"|format(
                         snapshot.spread_statistics.percentile_60d
                     ) }}
+
                 </div>
 
                 <div class="card-change">
@@ -668,9 +731,11 @@
                 </div>
 
                 <div class="card-value">
+
                     {{ "%+.2f"|format(
                         snapshot.spread_statistics.zscore_60d
                     ) }}
+
                 </div>
 
                 <div class="card-change">
@@ -710,10 +775,11 @@
                 </div>
 
                 <div class="card-value">
+
                     ${{ "{:,.0f}".format(
-                        snapshot.system_liquidity
-                        .reserve_balances_billions
+                        snapshot.system_liquidity.reserve_balances_billions
                     ) }}B
+
                 </div>
 
                 <div class="card-change">
@@ -730,10 +796,11 @@
                 </div>
 
                 <div class="card-value">
+
                     ${{ "{:,.1f}".format(
-                        snapshot.system_liquidity
-                        .on_rrp_billions
+                        snapshot.system_liquidity.on_rrp_billions
                     ) }}B
+
                 </div>
 
                 <div class="card-change">
@@ -750,10 +817,11 @@
                 </div>
 
                 <div class="card-value">
+
                     ${{ "{:,.0f}".format(
-                        snapshot.system_liquidity
-                        .tga_billions
+                        snapshot.system_liquidity.tga_billions
                     ) }}B
+
                 </div>
 
                 <div class="card-change">
@@ -770,10 +838,11 @@
                 </div>
 
                 <div class="card-value">
+
                     ${{ "{:,.0f}".format(
-                        snapshot.system_liquidity
-                        .net_liquidity_proxy_billions
+                        snapshot.system_liquidity.net_liquidity_proxy_billions
                     ) }}B
+
                 </div>
 
                 <div class="card-change">
@@ -812,10 +881,21 @@
                 </div>
 
                 <div class="card-value">
-                    ${{ "{:+,.0f}".format(
-                        snapshot.system_liquidity
-                        .weekly_change_billions
-                    ) }}B
+
+                    {% if snapshot.system_liquidity.weekly_change_billions < 0 %}
+
+                        -${{ "{:,.0f}".format(
+                            -snapshot.system_liquidity.weekly_change_billions
+                        ) }}B
+
+                    {% else %}
+
+                        ${{ "{:,.0f}".format(
+                            snapshot.system_liquidity.weekly_change_billions
+                        ) }}B
+
+                    {% endif %}
+
                 </div>
 
                 <div class="card-change">
@@ -832,10 +912,21 @@
                 </div>
 
                 <div class="card-value">
-                    ${{ "{:+,.0f}".format(
-                        snapshot.system_liquidity_history
-                        .four_week_change_billions
-                    ) }}B
+
+                    {% if snapshot.system_liquidity_history.four_week_change_billions < 0 %}
+
+                        -${{ "{:,.0f}".format(
+                            -snapshot.system_liquidity_history.four_week_change_billions
+                        ) }}B
+
+                    {% else %}
+
+                        ${{ "{:,.0f}".format(
+                            snapshot.system_liquidity_history.four_week_change_billions
+                        ) }}B
+
+                    {% endif %}
+
                 </div>
 
                 <div class="card-change">
@@ -852,10 +943,21 @@
                 </div>
 
                 <div class="card-value">
-                    ${{ "{:+,.0f}".format(
-                        snapshot.system_liquidity_history
-                        .thirteen_week_change_billions
-                    ) }}B
+
+                    {% if snapshot.system_liquidity_history.thirteen_week_change_billions < 0 %}
+
+                        -${{ "{:,.0f}".format(
+                            -snapshot.system_liquidity_history.thirteen_week_change_billions
+                        ) }}B
+
+                    {% else %}
+
+                        ${{ "{:,.0f}".format(
+                            snapshot.system_liquidity_history.thirteen_week_change_billions
+                        ) }}B
+
+                    {% endif %}
+
                 </div>
 
                 <div class="card-change">
@@ -872,10 +974,11 @@
                 </div>
 
                 <div class="card-value">
+
                     {{ "%.0f"|format(
-                        snapshot.system_liquidity_history
-                        .percentile_52_week
+                        snapshot.system_liquidity_history.percentile_52_week
                     ) }}
+
                 </div>
 
                 <div class="card-change">
@@ -883,11 +986,13 @@
                 </div>
 
                 <div class="card-date">
+
                     Z-score:
+
                     {{ "%+.2f"|format(
-                        snapshot.system_liquidity_history
-                        .zscore_52_week
+                        snapshot.system_liquidity_history.zscore_52_week
                     ) }}
+
                 </div>
 
             </div>
@@ -910,6 +1015,7 @@
     Federal Reserve Bank of New York and Federal Reserve
 
 </footer>
+
 
 </body>
 
