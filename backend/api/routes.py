@@ -14,6 +14,11 @@ router = APIRouter(
 )
 
 
+# =============================================================
+# DAILY SNAPSHOT
+# =============================================================
+
+
 @router.get("/snapshot")
 def get_snapshot():
 
@@ -30,13 +35,19 @@ def get_snapshot():
             "System Liquidity assessment is missing."
         )
 
-
     return {
+        # -----------------------------------------------------
+        # GENERATED
+        # -----------------------------------------------------
+
         "generated_at":
             snapshot.generated_at.isoformat(),
 
-        "assessment": {
+        # -----------------------------------------------------
+        # QUALITATIVE ASSESSMENT
+        # -----------------------------------------------------
 
+        "assessment": {
             "overall_verdict":
                 snapshot.assessment.overall_verdict,
 
@@ -46,9 +57,11 @@ def get_snapshot():
             "summary":
                 snapshot.assessment.summary,
 
+            # -------------------------------------------------
+            # FUNDING
+            # -------------------------------------------------
 
             "funding": {
-
                 "verdict":
                     snapshot.assessment
                     .funding
@@ -65,9 +78,11 @@ def get_snapshot():
                     .summary,
             },
 
+            # -------------------------------------------------
+            # SYSTEM LIQUIDITY
+            # -------------------------------------------------
 
             "system_liquidity": {
-
                 "verdict":
                     snapshot.assessment
                     .system_liquidity
@@ -84,9 +99,11 @@ def get_snapshot():
                     .summary,
             },
 
+            # -------------------------------------------------
+            # REPO MARKET PRESSURE
+            # -------------------------------------------------
 
             "repo_market": {
-
                 "verdict":
                     snapshot.assessment
                     .repo_market
@@ -100,10 +117,34 @@ def get_snapshot():
                 "summary":
                     snapshot.assessment
                     .repo_market
+                    .summary,
+            },
+
+            # -------------------------------------------------
+            # TREASURY INTERMEDIATION
+            # -------------------------------------------------
+
+            "treasury_intermediation": {
+                "verdict":
+                    snapshot.assessment
+                    .treasury_intermediation
+                    .verdict,
+
+                "confidence":
+                    snapshot.assessment
+                    .treasury_intermediation
+                    .confidence,
+
+                "summary":
+                    snapshot.assessment
+                    .treasury_intermediation
                     .summary,
             },
         },
 
+        # -----------------------------------------------------
+        # FUNDING SNAPSHOT
+        # -----------------------------------------------------
 
         "funding": {
             "observation_date":
@@ -165,6 +206,9 @@ def get_snapshot():
                 ),
         },
 
+        # -----------------------------------------------------
+        # FUNDING HISTORICAL STATISTICS
+        # -----------------------------------------------------
 
         "spread_statistics": {
             "observations_used":
@@ -210,6 +254,9 @@ def get_snapshot():
                 .zscore_60d,
         },
 
+        # -----------------------------------------------------
+        # SYSTEM LIQUIDITY SNAPSHOT
+        # -----------------------------------------------------
 
         "system_liquidity": {
             "observation_date":
@@ -272,6 +319,9 @@ def get_snapshot():
                 ),
         },
 
+        # -----------------------------------------------------
+        # SYSTEM LIQUIDITY HISTORY
+        # -----------------------------------------------------
 
         "system_liquidity_history": {
             "observations_used":
@@ -329,6 +379,9 @@ def get_snapshot():
                 .zscore_52_week,
         },
 
+        # -----------------------------------------------------
+        # MORNING BRIEF
+        # -----------------------------------------------------
 
         "morning_brief": {
             "headline":
@@ -342,12 +395,20 @@ def get_snapshot():
 
             "what_to_watch":
                 snapshot.morning_brief.what_to_watch,
-
         },
+
+        # -----------------------------------------------------
+        # MARKET NEWS / NARRATIVE
+        # -----------------------------------------------------
 
         "market_narrative":
             snapshot.market_narrative,
     }
+
+
+# =============================================================
+# FUNDING HISTORY
+# =============================================================
 
 
 @router.get("/funding/history")
@@ -370,15 +431,20 @@ def funding_history(
                 .isoformat(),
 
             "sofr":
-                float(point.sofr),
+                float(
+                    point.sofr
+                ),
 
             "effr":
-                float(point.effr),
+                float(
+                    point.effr
+                ),
 
             "spread_bp":
                 float(
                     point.spread_basis_points
                 ),
         }
+
         for point in history
     ]

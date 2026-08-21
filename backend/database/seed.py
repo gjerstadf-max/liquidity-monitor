@@ -403,6 +403,146 @@ def seed_database() -> None:
                     "Percent",
             },
 
+                        # -------------------------------------------------
+            # TREASURY INTERMEDIATION
+            # -------------------------------------------------
+
+            {
+                "symbol":
+                    "pd_treasury_positions",
+
+                "name":
+                    "Primary Dealer Treasury Positions",
+
+                "category":
+                    "Treasury Intermediation",
+
+                "frequency":
+                    "Weekly",
+
+                "units":
+                    "USD Billions",
+            },
+
+            {
+                "symbol":
+                    "pd_treasury_transactions",
+
+                "name":
+                    "Primary Dealer Treasury Transactions",
+
+                "category":
+                    "Treasury Intermediation",
+
+                "frequency":
+                    "Weekly",
+
+                "units":
+                    "USD Billions",
+            },
+
+            {
+                "symbol":
+                    "pd_treasury_repo",
+
+                "name":
+                    "Primary Dealer Treasury Repo Financing",
+
+                "category":
+                    "Treasury Intermediation",
+
+                "frequency":
+                    "Weekly",
+
+                "units":
+                    "USD Billions",
+            },
+
+            {
+                "symbol":
+                    "pd_treasury_reverse_repo",
+
+                "name":
+                    "Primary Dealer Treasury Reverse Repo Financing",
+
+                "category":
+                    "Treasury Intermediation",
+
+                "frequency":
+                    "Weekly",
+
+                "units":
+                    "USD Billions",
+            },
+
+            {
+                "symbol":
+                    "pd_treasury_borrowed",
+
+                "name":
+                    "Primary Dealer Treasury Securities Borrowed",
+
+                "category":
+                    "Treasury Intermediation",
+
+                "frequency":
+                    "Weekly",
+
+                "units":
+                    "USD Billions",
+            },
+
+            {
+                "symbol":
+                    "pd_treasury_lent",
+
+                "name":
+                    "Primary Dealer Treasury Securities Lent",
+
+                "category":
+                    "Treasury Intermediation",
+
+                "frequency":
+                    "Weekly",
+
+                "units":
+                    "USD Billions",
+            },
+
+            {
+                "symbol":
+                    "pd_treasury_fails_receive",
+
+                "name":
+                    "Primary Dealer Treasury Fails to Receive",
+
+                "category":
+                    "Treasury Intermediation",
+
+                "frequency":
+                    "Weekly",
+
+                "units":
+                    "USD Billions",
+            },
+
+            {
+                "symbol":
+                    "pd_treasury_fails_deliver",
+
+                "name":
+                    "Primary Dealer Treasury Fails to Deliver",
+
+                "category":
+                    "Treasury Intermediation",
+
+                "frequency":
+                    "Weekly",
+
+                "units":
+                    "USD Billions",
+            },
+
 
             # -------------------------------------------------
             # SYSTEM LIQUIDITY

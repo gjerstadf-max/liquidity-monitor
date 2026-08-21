@@ -19,5 +19,6 @@ class LiquidityAssessment:
     funding: Assessment
     system_liquidity: Assessment
     repo_market: Assessment
+    treasury_intermediation: Assessment
 
     summary: str
