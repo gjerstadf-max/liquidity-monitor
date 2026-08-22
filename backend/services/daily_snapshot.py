@@ -26,6 +26,9 @@ from backend.metrics.system_liquidity import (
     system_liquidity_history_metrics,
     system_liquidity_metrics,
 )
+from backend.news.context import (
+    build_market_context,
+)
 from backend.news.storage import (
     load_latest_market_narrative,
 )
@@ -42,16 +45,22 @@ from backend.services.freshness import (
 
 @dataclass(frozen=True)
 class DailySnapshot:
+    """
+    Complete application snapshot used by the API
+    and homepage.
+
+    Business logic remains in the underlying metrics,
+    signals, assessments and commentary modules.
+    """
+
     generated_at: datetime
 
     assessment: LiquidityAssessment
 
     funding: FundingSnapshot
-
     spread_statistics: FundingSpreadStatistics
 
     system_liquidity: SystemLiquidityMetrics
-
     system_liquidity_history: SystemLiquidityHistoryMetrics
 
     morning_brief: MorningBrief
@@ -59,21 +68,31 @@ class DailySnapshot:
     funding_freshness: DataFreshness
 
     market_narrative: dict[str, Any]
+    market_context: dict[str, Any]
 
 
 # =============================================================
-# NEWS OVERLAY
+# EMPTY STORED NEWS STATE
 # =============================================================
 
 
 def _empty_news_overlay(
     status: str = "No stored snapshot",
 ) -> dict[str, Any]:
+    """
+    Return a predictable empty news object.
+
+    This preserves the existing market_narrative interface
+    used by the API while allowing the simplified homepage
+    Market Context to remain independent of the old visual
+    news overlay.
+    """
 
     return {
         "available": False,
 
-        "status": status,
+        "status":
+            status,
 
         "market_attention":
             "Unavailable",
@@ -90,14 +109,20 @@ def _empty_news_overlay(
     }
 
 
+# =============================================================
+# STORED NEWS
+# =============================================================
+
+
 def _load_news_overlay(
 ) -> dict[str, Any]:
     """
-    Load the latest stored news assessment.
+    Load the latest stored market-news narrative.
 
-    This function deliberately makes no external
-    network calls. News collection happens only
-    inside the scheduled news-refresh job.
+    No network request occurs here.
+
+    External news collection remains the responsibility
+    of the scheduled news-refresh process.
     """
 
     try:
@@ -106,16 +131,11 @@ def _load_news_overlay(
             load_latest_market_narrative()
         )
 
-
         if narrative is None:
 
-            return (
-                _empty_news_overlay()
-            )
-
+            return _empty_news_overlay()
 
         return narrative
-
 
     except Exception as exc:
 
@@ -123,7 +143,6 @@ def _load_news_overlay(
             "Stored news overlay unavailable: "
             f"{exc}"
         )
-
 
         return _empty_news_overlay(
             status="Database unavailable"
@@ -138,10 +157,26 @@ def _load_news_overlay(
 def build_daily_snapshot(
     include_news: bool = False,
 ) -> DailySnapshot:
+    """
+    Build the complete Liquidity Monitor snapshot.
 
-    # ---------------------------------------------------------
+    Sequence:
+
+        1. Funding metrics
+        2. System-liquidity metrics
+        3. Four-factor liquidity assessment
+        4. Morning Brief
+        5. Data freshness
+        6. Stored news narrative
+        7. Simplified Market Context
+
+    News remains contextual only and does not influence
+    quantitative metrics, signals or assessments.
+    """
+
+    # =========================================================
     # FUNDING
-    # ---------------------------------------------------------
+    # =========================================================
 
     funding = (
         latest_funding_snapshot()
@@ -152,9 +187,9 @@ def build_daily_snapshot(
     )
 
 
-    # ---------------------------------------------------------
+    # =========================================================
     # SYSTEM LIQUIDITY
-    # ---------------------------------------------------------
+    # =========================================================
 
     system_liquidity = (
         system_liquidity_metrics()
@@ -165,29 +200,44 @@ def build_daily_snapshot(
     )
 
 
-    # ---------------------------------------------------------
-    # ASSESSMENT
-    # ---------------------------------------------------------
+    # =========================================================
+    # QUALITATIVE ASSESSMENT
+    # =========================================================
+    #
+    # The assessment engine now contains:
+    #
+    #   1. Funding Conditions
+    #   2. System Liquidity
+    #   3. Repo Market Pressure
+    #   4. Treasury Intermediation
+    #
+    # No composite numeric score is used.
+    # =========================================================
 
     assessment = (
         build_liquidity_assessment()
     )
 
 
-    # ---------------------------------------------------------
+    # =========================================================
     # MORNING BRIEF
-    # ---------------------------------------------------------
+    # =========================================================
+    #
+    # Reuse the assessment we just calculated rather than
+    # rebuilding it inside the commentary layer.
+    # =========================================================
 
     morning_brief = (
         generate_morning_brief(
-            assessment=assessment
+            assessment=
+                assessment
         )
     )
 
 
-    # ---------------------------------------------------------
+    # =========================================================
     # DATA FRESHNESS
-    # ---------------------------------------------------------
+    # =========================================================
 
     funding_freshness = (
         funding_data_freshness(
@@ -196,9 +246,17 @@ def build_daily_snapshot(
     )
 
 
-    # ---------------------------------------------------------
+    # =========================================================
     # STORED MARKET NEWS
-    # ---------------------------------------------------------
+    # =========================================================
+    #
+    # The application does not fetch external news here.
+    #
+    # include_news=True simply means:
+    #
+    #   Load the most recent narrative already stored
+    #   by the scheduled news-refresh process.
+    # =========================================================
 
     if include_news:
 
@@ -215,13 +273,31 @@ def build_daily_snapshot(
         )
 
 
-    # ---------------------------------------------------------
+    # =========================================================
+    # SIMPLIFIED MARKET CONTEXT
+    # =========================================================
+    #
+    # The detailed narrative remains available to the API,
+    # but the homepage receives only the deliberately small
+    # Market Context representation.
+    # =========================================================
+
+    market_context = (
+        build_market_context(
+            market_narrative
+        )
+    )
+
+
+    # =========================================================
     # FINAL SNAPSHOT
-    # ---------------------------------------------------------
+    # =========================================================
 
     return DailySnapshot(
         generated_at=
-            datetime.now(timezone.utc),
+            datetime.now(
+                timezone.utc
+            ),
 
         assessment=
             assessment,
@@ -246,4 +322,7 @@ def build_daily_snapshot(
 
         market_narrative=
             market_narrative,
+
+        market_context=
+            market_context,
     )
