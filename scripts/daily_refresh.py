@@ -13,22 +13,22 @@ from backend.database.seed import seed_database
 
 
 LOADERS = [
+
     (
-        "SOFR / EFFR",
+        "NY Fed Reference Rates",
         "scripts.load_reference_rates",
     ),
+
     (
         "ON RRP",
         "scripts.load_reverse_repo",
     ),
+
     (
-        "Reserve Balances",
-        "scripts.load_reserve_balances",
+        "FRED Market Data",
+        "scripts.load_fred",
     ),
-    (
-        "Treasury General Account",
-        "scripts.load_tga",
-    ),
+
     (
         "Primary Dealer Treasury Data",
         "scripts.load_primary_dealer_treasury",
@@ -91,13 +91,11 @@ def daily_refresh() -> None:
     exist before any loader attempts to write data.
 
     Order:
-
         0. Seed / verify indicator catalog
-        1. SOFR / EFFR
+        1. NY Fed Reference Rates
         2. ON RRP
-        3. Reserve Balances
-        4. Treasury General Account
-        5. Primary Dealer Treasury Data
+        3. FRED Market Data
+        4. Primary Dealer Treasury Data
 
     Metrics, signals, assessments and commentary are
     calculated from the database when requested.
