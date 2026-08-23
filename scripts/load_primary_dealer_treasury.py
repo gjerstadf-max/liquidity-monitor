@@ -12,8 +12,8 @@ from backend.collectors.nyfed_primary_dealers import (
 from backend.database.seed import (
     seed_database,
 )
-from scripts.load_reference_rates import (
-    load_values,
+from backend.services.observation_store import (
+    store_values,
 )
 
 
@@ -375,11 +375,22 @@ def load_primary_dealer_series(
         return
 
 
-    inserted, skipped = (
-        load_values(
-            indicator_symbol,
+    store_result = (
+        store_values(
+           indicator_symbol=
+               indicator_symbol,
+
+        values=
             values,
         )
+    )
+
+    inserted = (
+        store_result.inserted
+    )
+
+    skipped = (
+        store_result.skipped
     )
 
 
