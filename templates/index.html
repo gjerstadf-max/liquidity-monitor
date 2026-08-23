@@ -1,7 +1,9 @@
 <!DOCTYPE html>
+
 <html lang="en">
 
 <head>
+
     <meta charset="UTF-8">
 
     <meta
@@ -9,865 +11,1620 @@
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>Liquidity Monitor</title>
+    <title>
+        Liquidity Monitor
+    </title>
+
 
     <link
         rel="stylesheet"
-        href="/static/css/styles.css?v=20260821-1"
+        href="/static/css/styles.css?v=20260822-2"
     >
+
+    <link
+        rel="stylesheet"
+        href="/static/css/events.css?v=20260822-1"
+    >
+
 </head>
 
 
 <body>
 
+
 <header>
-    <h1>Liquidity Monitor</h1>
-    <p>U.S. Cash Market Liquidity</p>
+
+    <h1>
+        Liquidity Monitor
+    </h1>
+
+    <p>
+        U.S. Cash Market Liquidity
+    </p>
+
 </header>
 
 
 <main>
 
+
     <!-- ======================================================
-         OVERALL LIQUIDITY ASSESSMENT
+         PAGE TABS
          ====================================================== -->
 
-    <section class="assessment">
 
-        <div class="assessment-label">
-            Current Liquidity Assessment
-        </div>
+    <nav
+        class="page-tabs"
+        role="tablist"
+        aria-label="Liquidity Monitor sections"
+    >
 
-        <div class="score-row">
-
-            <div class="condition">
-                {{ snapshot.assessment.overall_verdict }}
-            </div>
-
-        </div>
-
-        <p>
-            {{ snapshot.assessment.summary }}
-        </p>
-
-        <div class="confidence">
-            Confidence:
-            {{ snapshot.assessment.confidence }}
-        </div>
+        <button
+            type="button"
+            class="page-tab"
+            id="tab-current"
+            role="tab"
+            aria-selected="true"
+            aria-controls="panel-current"
+            data-tab-target="current"
+        >
+            Current Conditions
+        </button>
 
 
-        <div class="status-row">
+        <button
+            type="button"
+            class="page-tab"
+            id="tab-critical-events"
+            role="tab"
+            aria-selected="false"
+            aria-controls="panel-critical-events"
+            data-tab-target="critical-events"
+        >
+            Critical Events
+        </button>
 
-            <div>
-                Latest funding data:
-                <strong>
-                    {{ snapshot.funding.observation_date }}
-                </strong>
-            </div>
+    </nav>
 
-            <div>
-                Latest system data:
-                <strong>
-                    {{ snapshot.system_liquidity.observation_date }}
-                </strong>
-            </div>
-
-            <div
-                class="
-                    {% if snapshot.funding_freshness.is_current %}
-                        status-current
-                    {% else %}
-                        status-stale
-                    {% endif %}
-                "
-            >
-                Funding status:
-                {{ snapshot.funding_freshness.label }}
-            </div>
-
-        </div>
-
-    </section>
 
 
     <!-- ======================================================
-         MORNING BRIEF
+         CURRENT CONDITIONS TAB
          ====================================================== -->
 
-    <section class="brief">
 
-        <h2>
-            Morning Liquidity Brief
-        </h2>
-
-        <div class="headline">
-            {{ snapshot.morning_brief.headline }}
-        </div>
-
-        <p>
-            {{ snapshot.morning_brief.summary }}
-        </p>
+    <div
+        class="tab-panel"
+        id="panel-current"
+        role="tabpanel"
+        aria-labelledby="tab-current"
+        data-tab-panel="current"
+    >
 
 
-        <div class="brief-grid">
+        <!-- ==================================================
+             OVERALL LIQUIDITY ASSESSMENT
+             ================================================== -->
 
-            <div class="brief-box">
 
-                <h3>
-                    What Matters
-                </h3>
+        <section class="assessment">
 
-                {% for item in snapshot.morning_brief.what_matters %}
+            <div class="assessment-label">
 
-                    <p>
-                        {{ item }}
-                    </p>
-
-                {% endfor %}
+                Current Liquidity Assessment
 
             </div>
 
 
-            <div class="brief-box">
+            <div class="score-row">
 
-                <h3>
-                    What To Watch
-                </h3>
+                <div class="condition">
 
-                {% for item in snapshot.morning_brief.what_to_watch %}
+                    {{ snapshot.assessment.overall_verdict }}
 
-                    <p>
-                        {{ item }}
-                    </p>
-
-                {% endfor %}
+                </div>
 
             </div>
 
-        </div>
 
-    </section>
+            <p>
 
+                {{ snapshot.assessment.summary }}
 
-    <!-- ======================================================
-         MARKET NEWS OVERLAY
-         ====================================================== -->
-        <!-- ======================================================
-         MARKET CONTEXT
-         ====================================================== -->
-
-    <section class="brief">
-
-        <h2>
-            Market Context
-        </h2>
-
-        <div class="section-subtitle">
-            Selected external developments only.
-            Market context does not determine the
-            quantitative liquidity assessment.
-        </div>
+            </p>
 
 
-        {% if snapshot.market_context.items %}
+            <div class="confidence">
 
-            <div class="brief-box">
+                Confidence:
 
-                <p>
-                    {{ snapshot.market_context.summary }}
-                </p>
+                {{ snapshot.assessment.confidence }}
 
-                <ul>
+            </div>
 
-                    {% for item in snapshot.market_context["items"] %}
 
-                        <li>
+            <div class="status-row">
 
-                            {% if item.url %}
+                <div>
 
-                                <a
-                                    href="{{ item.url }}"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    {{ item.text }}
-                                </a>
+                    Latest funding data:
 
-                            {% else %}
+                    <strong>
+                        {{ snapshot.funding.observation_date }}
+                    </strong>
 
-                                {{ item.text }}
+                </div>
 
-                            {% endif %}
 
-                        </li>
+                <div>
+
+                    Latest system data:
+
+                    <strong>
+                        {{ snapshot.system_liquidity.observation_date }}
+                    </strong>
+
+                </div>
+
+
+                <div
+                    class="
+                        {% if snapshot.funding_freshness.is_current %}
+                            status-current
+                        {% else %}
+                            status-stale
+                        {% endif %}
+                    "
+                >
+
+                    Funding status:
+
+                    {{ snapshot.funding_freshness.label }}
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ==================================================
+             MORNING BRIEF
+             ================================================== -->
+
+
+        <section class="brief">
+
+            <h2>
+                Morning Liquidity Brief
+            </h2>
+
+
+            <div class="headline">
+
+                {{ snapshot.morning_brief.headline }}
+
+            </div>
+
+
+            <p>
+
+                {{ snapshot.morning_brief.summary }}
+
+            </p>
+
+
+            <div class="brief-grid">
+
+
+                <div class="brief-box">
+
+                    <h3>
+                        What Matters
+                    </h3>
+
+
+                    {% for item in snapshot.morning_brief.what_matters %}
+
+                        <p>
+                            {{ item }}
+                        </p>
 
                     {% endfor %}
 
-                </ul>
+                </div>
+
+
+                <div class="brief-box">
+
+                    <h3>
+                        What To Watch
+                    </h3>
+
+
+                    {% for item in snapshot.morning_brief.what_to_watch %}
+
+                        <p>
+                            {{ item }}
+                        </p>
+
+                    {% endfor %}
+
+                </div>
+
 
             </div>
 
-        {% else %}
+        </section>
 
-            <p>
-                {{ snapshot.market_context.summary }}
+
+
+        <!-- ==================================================
+             MARKET CONTEXT
+             ================================================== -->
+
+
+        <section class="brief">
+
+            <h2>
+                Market Context
+            </h2>
+
+
+            <div class="section-subtitle">
+
+                Selected external developments only.
+                Market context does not determine the
+                quantitative liquidity assessment.
+
+            </div>
+
+
+            {% if snapshot.market_context["items"] %}
+
+                <div class="brief-box">
+
+                    <p>
+
+                        {{ snapshot.market_context["summary"] }}
+
+                    </p>
+
+
+                    <ul>
+
+                        {% for item in snapshot.market_context["items"] %}
+
+                            <li>
+
+                                {% if item["url"] %}
+
+                                    <a
+                                        href="{{ item['url'] }}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        {{ item["text"] }}
+                                    </a>
+
+                                {% else %}
+
+                                    {{ item["text"] }}
+
+                                {% endif %}
+
+                            </li>
+
+                        {% endfor %}
+
+                    </ul>
+
+                </div>
+
+
+            {% else %}
+
+
+                <p>
+
+                    {{ snapshot.market_context["summary"] }}
+
+                </p>
+
+
+            {% endif %}
+
+        </section>
+
+
+
+        <!-- ==================================================
+             LIQUIDITY FACTORS
+             ================================================== -->
+
+
+        <section class="funding-section">
+
+            <h2>
+                Liquidity Factors
+            </h2>
+
+
+            <div class="section-subtitle">
+
+                Independent assessments underlying the
+                overall liquidity conclusion
+
+            </div>
+
+
+            <div class="cards">
+
+
+                <!-- FUNDING CONDITIONS -->
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        Funding Conditions
+                    </div>
+
+                    <div class="card-value">
+                        {{ snapshot.assessment.funding.verdict }}
+                    </div>
+
+                    <div class="card-change">
+                        {{ snapshot.assessment.funding.summary }}
+                    </div>
+
+                    <div class="card-date">
+
+                        Confidence:
+                        {{ snapshot.assessment.funding.confidence }}
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- SYSTEM LIQUIDITY -->
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        System Liquidity
+                    </div>
+
+                    <div class="card-value">
+
+                        {{
+                            snapshot.assessment
+                            .system_liquidity
+                            .verdict
+                        }}
+
+                    </div>
+
+                    <div class="card-change">
+
+                        {{
+                            snapshot.assessment
+                            .system_liquidity
+                            .summary
+                        }}
+
+                    </div>
+
+                    <div class="card-date">
+
+                        Confidence:
+
+                        {{
+                            snapshot.assessment
+                            .system_liquidity
+                            .confidence
+                        }}
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- REPO MARKET PRESSURE -->
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        Repo Market Pressure
+                    </div>
+
+                    <div class="card-value">
+
+                        {{
+                            snapshot.assessment
+                            .repo_market
+                            .verdict
+                        }}
+
+                    </div>
+
+                    <div class="card-change">
+
+                        {{
+                            snapshot.assessment
+                            .repo_market
+                            .summary
+                        }}
+
+                    </div>
+
+                    <div class="card-date">
+
+                        Confidence:
+
+                        {{
+                            snapshot.assessment
+                            .repo_market
+                            .confidence
+                        }}
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- TREASURY INTERMEDIATION -->
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        Treasury Intermediation
+                    </div>
+
+                    <div class="card-value">
+
+                        {{
+                            snapshot.assessment
+                            .treasury_intermediation
+                            .verdict
+                        }}
+
+                    </div>
+
+                    <div class="card-change">
+
+                        {{
+                            snapshot.assessment
+                            .treasury_intermediation
+                            .summary
+                        }}
+
+                    </div>
+
+                    <div class="card-date">
+
+                        Confidence:
+
+                        {{
+                            snapshot.assessment
+                            .treasury_intermediation
+                            .confidence
+                        }}
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- OVERALL -->
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        Overall Conclusion
+                    </div>
+
+                    <div class="card-value">
+
+                        {{ snapshot.assessment.overall_verdict }}
+
+                    </div>
+
+                    <div class="card-change">
+
+                        Qualitative synthesis of the four
+                        independent liquidity factors
+
+                    </div>
+
+                    <div class="card-date">
+
+                        Confidence:
+                        {{ snapshot.assessment.confidence }}
+
+                    </div>
+
+                </div>
+
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ==================================================
+             OVERNIGHT FUNDING
+             ================================================== -->
+
+
+        <section class="funding-section">
+
+            <h2>
+                Overnight Funding
+            </h2>
+
+
+            <div class="section-subtitle">
+
+                Latest common SOFR and EFFR observation:
+
+                {{ snapshot.funding.observation_date }}
+
+            </div>
+
+
+            <div class="cards">
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        SOFR
+                    </div>
+
+                    <div class="card-value">
+
+                        {{
+                            "%.2f"|format(
+                                snapshot.funding.sofr
+                            )
+                        }}%
+
+                    </div>
+
+                    <div class="card-change">
+
+                        {{
+                            "%+.0f"|format(
+                                snapshot.funding.sofr_change_bp
+                            )
+                        }}
+
+                        bp from prior day
+
+                    </div>
+
+                    <div class="card-date">
+
+                        Previous:
+
+                        {{
+                            "%.2f"|format(
+                                snapshot.funding.previous_sofr
+                            )
+                        }}%
+
+                    </div>
+
+                </div>
+
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        EFFR
+                    </div>
+
+                    <div class="card-value">
+
+                        {{
+                            "%.2f"|format(
+                                snapshot.funding.effr
+                            )
+                        }}%
+
+                    </div>
+
+                    <div class="card-change">
+
+                        {{
+                            "%+.0f"|format(
+                                snapshot.funding.effr_change_bp
+                            )
+                        }}
+
+                        bp from prior day
+
+                    </div>
+
+                    <div class="card-date">
+
+                        Previous:
+
+                        {{
+                            "%.2f"|format(
+                                snapshot.funding.previous_effr
+                            )
+                        }}%
+
+                    </div>
+
+                </div>
+
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        SOFR − EFFR
+                    </div>
+
+                    <div class="card-value">
+
+                        {{
+                            "%+.0f"|format(
+                                snapshot.funding
+                                .spread_basis_points
+                            )
+                        }}
+
+                        bp
+
+                    </div>
+
+                    <div class="card-change">
+
+                        {{
+                            "%+.0f"|format(
+                                snapshot.funding
+                                .spread_change_bp
+                            )
+                        }}
+
+                        bp from prior day
+
+                    </div>
+
+                    <div class="card-date">
+
+                        Previous:
+
+                        {{
+                            "%+.0f"|format(
+                                snapshot.funding
+                                .previous_spread_basis_points
+                            )
+                        }}
+
+                        bp
+
+                    </div>
+
+                </div>
+
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        Funding Verdict
+                    </div>
+
+                    <div class="card-value">
+
+                        {{ snapshot.assessment.funding.verdict }}
+
+                    </div>
+
+                    <div class="card-change">
+                        Historically contextualized
+                    </div>
+
+                    <div class="card-date">
+
+                        Confidence:
+                        {{ snapshot.assessment.funding.confidence }}
+
+                    </div>
+
+                </div>
+
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ==================================================
+             FUNDING HISTORY
+             ================================================== -->
+
+
+        <section class="funding-section">
+
+            <h2>
+                Historical Funding Context
+            </h2>
+
+
+            <div class="section-subtitle">
+
+                SOFR − EFFR relative to the most recent
+
+                {{
+                    snapshot.spread_statistics
+                    .observations_used
+                }}
+
+                common observations
+
+            </div>
+
+
+            <div class="cards">
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        30-Day Average
+                    </div>
+
+                    <div class="card-value">
+
+                        {{
+                            "%+.2f"|format(
+                                snapshot.spread_statistics
+                                .average_30d_bp
+                            )
+                        }}
+
+                        bp
+
+                    </div>
+
+                    <div class="card-change">
+                        Recent typical spread
+                    </div>
+
+                </div>
+
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        60-Day Range
+                    </div>
+
+                    <div class="card-value">
+
+                        {{
+                            "%+.0f"|format(
+                                snapshot.spread_statistics
+                                .minimum_60d_bp
+                            )
+                        }}
+
+                        to
+
+                        {{
+                            "%+.0f"|format(
+                                snapshot.spread_statistics
+                                .maximum_60d_bp
+                            )
+                        }}
+
+                        bp
+
+                    </div>
+
+                    <div class="card-change">
+                        Recent observed range
+                    </div>
+
+                </div>
+
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        60-Day Percentile
+                    </div>
+
+                    <div class="card-value">
+
+                        {{
+                            "%.0f"|format(
+                                snapshot.spread_statistics
+                                .percentile_60d
+                            )
+                        }}
+
+                    </div>
+
+                    <div class="card-change">
+                        Current distribution position
+                    </div>
+
+                </div>
+
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        60-Day Z-Score
+                    </div>
+
+                    <div class="card-value">
+
+                        {{
+                            "%+.2f"|format(
+                                snapshot.spread_statistics
+                                .zscore_60d
+                            )
+                        }}
+
+                    </div>
+
+                    <div class="card-change">
+                        Standard deviations from mean
+                    </div>
+
+                </div>
+
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ==================================================
+             SYSTEM LIQUIDITY PROXY
+             ================================================== -->
+
+
+        <section class="funding-section">
+
+            <h2>
+                System Liquidity Proxy
+            </h2>
+
+
+            <div class="section-subtitle">
+
+                Reserve Balances + ON RRP − TGA.
+                Preliminary monitoring proxy, not a measure
+                of total financial-system liquidity.
+
+            </div>
+
+
+            <div class="cards">
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        Reserve Balances
+                    </div>
+
+                    <div class="card-value">
+
+                        ${{
+                            "{:,.0f}".format(
+                                snapshot.system_liquidity
+                                .reserve_balances_billions
+                            )
+                        }}B
+
+                    </div>
+
+                    <div class="card-change">
+                        Banking-system reserves
+                    </div>
+
+                </div>
+
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        ON RRP
+                    </div>
+
+                    <div class="card-value">
+
+                        ${{
+                            "{:,.1f}".format(
+                                snapshot.system_liquidity
+                                .on_rrp_billions
+                            )
+                        }}B
+
+                    </div>
+
+                    <div class="card-change">
+                        Cash parked at the Fed
+                    </div>
+
+                </div>
+
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        Treasury General Account
+                    </div>
+
+                    <div class="card-value">
+
+                        ${{
+                            "{:,.0f}".format(
+                                snapshot.system_liquidity
+                                .tga_billions
+                            )
+                        }}B
+
+                    </div>
+
+                    <div class="card-change">
+                        Treasury cash balance
+                    </div>
+
+                </div>
+
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        Net Liquidity Proxy
+                    </div>
+
+                    <div class="card-value">
+
+                        ${{
+                            "{:,.0f}".format(
+                                snapshot.system_liquidity
+                                .net_liquidity_proxy_billions
+                            )
+                        }}B
+
+                    </div>
+
+                    <div class="card-change">
+                        Reserve + RRP − TGA
+                    </div>
+
+                </div>
+
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ==================================================
+             SYSTEM LIQUIDITY TREND
+             ================================================== -->
+
+
+        <section class="funding-section">
+
+            <h2>
+                System Liquidity Trend
+            </h2>
+
+
+            <div class="section-subtitle">
+
+                Direction and historical position of the
+                preliminary system-liquidity proxy
+
+            </div>
+
+
+            <div class="cards">
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        Weekly Change
+                    </div>
+
+                    <div class="card-value">
+
+                        {% if
+                            snapshot.system_liquidity
+                            .weekly_change_billions < 0
+                        %}
+
+                            -${{
+                                "{:,.0f}".format(
+                                    -snapshot.system_liquidity
+                                    .weekly_change_billions
+                                )
+                            }}B
+
+                        {% else %}
+
+                            ${{
+                                "{:,.0f}".format(
+                                    snapshot.system_liquidity
+                                    .weekly_change_billions
+                                )
+                            }}B
+
+                        {% endif %}
+
+                    </div>
+
+                    <div class="card-change">
+                        Latest weekly movement
+                    </div>
+
+                </div>
+
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        4-Week Change
+                    </div>
+
+                    <div class="card-value">
+
+                        {% if
+                            snapshot.system_liquidity_history
+                            .four_week_change_billions < 0
+                        %}
+
+                            -${{
+                                "{:,.0f}".format(
+                                    -snapshot
+                                    .system_liquidity_history
+                                    .four_week_change_billions
+                                )
+                            }}B
+
+                        {% else %}
+
+                            ${{
+                                "{:,.0f}".format(
+                                    snapshot
+                                    .system_liquidity_history
+                                    .four_week_change_billions
+                                )
+                            }}B
+
+                        {% endif %}
+
+                    </div>
+
+                    <div class="card-change">
+                        One-month direction
+                    </div>
+
+                </div>
+
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        13-Week Change
+                    </div>
+
+                    <div class="card-value">
+
+                        {% if
+                            snapshot.system_liquidity_history
+                            .thirteen_week_change_billions < 0
+                        %}
+
+                            -${{
+                                "{:,.0f}".format(
+                                    -snapshot
+                                    .system_liquidity_history
+                                    .thirteen_week_change_billions
+                                )
+                            }}B
+
+                        {% else %}
+
+                            ${{
+                                "{:,.0f}".format(
+                                    snapshot
+                                    .system_liquidity_history
+                                    .thirteen_week_change_billions
+                                )
+                            }}B
+
+                        {% endif %}
+
+                    </div>
+
+                    <div class="card-change">
+                        Quarterly direction
+                    </div>
+
+                </div>
+
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        52-Week Position
+                    </div>
+
+                    <div class="card-value">
+
+                        {{
+                            "%.0f"|format(
+                                snapshot
+                                .system_liquidity_history
+                                .percentile_52_week
+                            )
+                        }}
+
+                    </div>
+
+                    <div class="card-change">
+                        Percentile of past year
+                    </div>
+
+                    <div class="card-date">
+
+                        Z-score:
+
+                        {{
+                            "%+.2f"|format(
+                                snapshot
+                                .system_liquidity_history
+                                .zscore_52_week
+                            )
+                        }}
+
+                    </div>
+
+                </div>
+
+
+            </div>
+
+        </section>
+
+
+    </div>
+
+
+
+    <!-- ======================================================
+         CRITICAL EVENTS TAB
+         ====================================================== -->
+
+
+    <div
+        class="tab-panel"
+        id="panel-critical-events"
+        role="tabpanel"
+        aria-labelledby="tab-critical-events"
+        data-tab-panel="critical-events"
+        hidden
+    >
+
+
+        <section class="events-intro">
+
+            <h2>
+                Critical Events Identified by the Monitor
+            </h2>
+
+
+            <p class="events-intro-copy">
+
+                These episodes were identified by the
+                Liquidity Monitor's validated historical
+                signal framework. Each event shows what
+                triggered the monitor, the market conditions
+                surrounding the episode and independent
+                sources for further review.
+
             </p>
 
-        {% endif %}
 
-    </section>
+            <div class="events-methodology">
+
+                <strong>
+                    Interpretation:
+                </strong>
+
+                A Critical signal represents an extreme
+                reading within a specific liquidity factor.
+                It does not automatically mean a financial
+                crisis occurred. Calendar-turn events are
+                preserved as genuine funding stress but are
+                shown separately from broader market
+                disruptions.
+
+            </div>
+
+        </section>
 
 
-    <!-- ======================================================
-         LIQUIDITY FACTORS
-         ====================================================== -->
 
-    <section class="funding-section">
+        <!-- ==================================================
+             MAJOR MARKET EVENTS
+             ================================================== -->
 
-        <h2>
-            Liquidity Factors
-        </h2>
 
-        <div class="section-subtitle">
-            Independent assessments underlying the
-            overall liquidity conclusion
+        <div class="critical-event-list">
+
+
+            {% for event in critical_events %}
+
+
+                <article
+                    class="critical-event-card"
+                    id="{{ event['id'] }}"
+                >
+
+
+                    <div class="critical-event-topline">
+                    </div>
+
+
+                    <div class="critical-event-content">
+
+
+                        <div class="critical-event-header">
+
+
+                            <div>
+
+                                <div class="critical-event-period">
+
+                                    {{ event["period"] }}
+
+                                </div>
+
+
+                                <h3 class="critical-event-title">
+
+                                    {{ event["title"] }}
+
+                                </h3>
+
+                            </div>
+
+
+                            <div class="critical-badge">
+
+                                CRITICAL
+
+                            </div>
+
+
+                        </div>
+
+
+
+                        <div class="event-meta-row">
+
+
+                            <span class="event-type-badge">
+
+                                {{ event["event_type"] }}
+
+                            </span>
+
+
+                            {% for factor in event["factors"] %}
+
+                                <span class="factor-badge">
+
+                                    {{ factor }}
+
+                                </span>
+
+                            {% endfor %}
+
+
+                        </div>
+
+
+
+                        <div class="event-section">
+
+                            <h4>
+                                What the Monitor Identified
+                            </h4>
+
+                            <p>
+
+                                {{
+                                    event[
+                                        "monitor_commentary"
+                                    ]
+                                }}
+
+                            </p>
+
+
+                            <ul class="monitor-evidence-list">
+
+                                {% for evidence in
+                                    event["monitor_evidence"]
+                                %}
+
+                                    <li>
+
+                                        {{ evidence }}
+
+                                    </li>
+
+                                {% endfor %}
+
+                            </ul>
+
+                        </div>
+
+
+
+                        <hr class="event-divider">
+
+
+
+                        <div class="event-section">
+
+                            <h4>
+                                Market Context
+                            </h4>
+
+                            <p>
+
+                                {{
+                                    event[
+                                        "market_commentary"
+                                    ]
+                                }}
+
+                            </p>
+
+                        </div>
+
+
+
+                        <div class="event-section">
+
+                            <h4>
+                                Why It Matters
+                            </h4>
+
+                            <p>
+
+                                {{
+                                    event[
+                                        "why_it_matters"
+                                    ]
+                                }}
+
+                            </p>
+
+                        </div>
+
+
+
+                        <div class="event-section">
+
+                            <h4>
+                                Read More
+                            </h4>
+
+
+                            <div class="event-sources">
+
+
+                                {% for source in event["sources"] %}
+
+
+                                    <a
+                                        class="event-source-link"
+                                        href="{{ source['url'] }}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+
+                                        {{ source["title"] }}
+
+                                    </a>
+
+
+                                {% endfor %}
+
+
+                            </div>
+
+                        </div>
+
+
+                    </div>
+
+
+                </article>
+
+
+            {% endfor %}
+
+
         </div>
 
 
-        <div class="cards">
 
-            <!-- FUNDING CONDITIONS -->
-
-            <div class="card">
-
-                <div class="card-title">
-                    Funding Conditions
-                </div>
-
-                <div class="card-value">
-                    {{ snapshot.assessment.funding.verdict }}
-                </div>
-
-                <div class="card-change">
-                    {{ snapshot.assessment.funding.summary }}
-                </div>
-
-                <div class="card-date">
-                    Confidence:
-                    {{ snapshot.assessment.funding.confidence }}
-                </div>
-
-            </div>
+        <!-- ==================================================
+             CALENDAR-TURN EVENTS
+             ================================================== -->
 
 
-            <!-- SYSTEM LIQUIDITY -->
+        <section class="calendar-events-section">
 
-            <div class="card">
 
-                <div class="card-title">
-                    System Liquidity
-                </div>
+            <div class="calendar-events-header">
 
-                <div class="card-value">
-                    {{ snapshot.assessment.system_liquidity.verdict }}
-                </div>
+                <h3>
+                    Calendar-Turn Critical Events
+                </h3>
 
-                <div class="card-change">
-                    {{ snapshot.assessment.system_liquidity.summary }}
-                </div>
 
-                <div class="card-date">
-                    Confidence:
-                    {{ snapshot.assessment.system_liquidity.confidence }}
-                </div>
+                <p>
+
+                    Reporting dates can produce genuine
+                    secured-funding pressure as dealer and
+                    bank balance-sheet behavior changes.
+                    Liquidity Monitor does not suppress these
+                    observations simply because they are
+                    expected; instead, the calendar context
+                    is shown explicitly.
+
+                </p>
 
             </div>
 
 
-            <!-- REPO MARKET PRESSURE -->
 
-            <div class="card">
-
-                <div class="card-title">
-                    Repo Market Pressure
-                </div>
-
-                <div class="card-value">
-                    {{ snapshot.assessment.repo_market.verdict }}
-                </div>
-
-                <div class="card-change">
-                    {{ snapshot.assessment.repo_market.summary }}
-                </div>
-
-                <div class="card-date">
-                    Confidence:
-                    {{ snapshot.assessment.repo_market.confidence }}
-                </div>
-
-            </div>
+            <div class="calendar-event-grid">
 
 
-            <!-- TREASURY INTERMEDIATION -->
-
-            <div class="card">
-
-                <div class="card-title">
-                    Treasury Intermediation
-                </div>
-
-                <div class="card-value">
-                    {{ snapshot.assessment.treasury_intermediation.verdict }}
-                </div>
-
-                <div class="card-change">
-                    {{ snapshot.assessment.treasury_intermediation.summary }}
-                </div>
-
-                <div class="card-date">
-                    Confidence:
-                    {{ snapshot.assessment.treasury_intermediation.confidence }}
-                </div>
-
-            </div>
+                {% for event in calendar_turn_events %}
 
 
-            <!-- OVERALL CONCLUSION -->
+                    <article class="calendar-event-card">
 
-            <div class="card">
 
-                <div class="card-title">
-                    Overall Conclusion
-                </div>
+                        <div class="calendar-event-period">
 
-                <div class="card-value">
-                    {{ snapshot.assessment.overall_verdict }}
-                </div>
+                            {{ event["period"] }}
 
-                <div class="card-change">
-                    Qualitative synthesis of the
-                    four independent liquidity factors
-                </div>
+                            &nbsp; • &nbsp;
 
-                <div class="card-date">
-                    Confidence:
-                    {{ snapshot.assessment.confidence }}
-                </div>
+                            {{ event["event_type"] }}
+
+                        </div>
+
+
+                        <h4>
+
+                            {{ event["title"] }}
+
+                        </h4>
+
+
+                        <p>
+
+                            {{ event["commentary"] }}
+
+                        </p>
+
+
+                        <div class="calendar-event-footer">
+
+
+                            <span class="calendar-event-factor">
+
+                                {{ event["factor"] }}
+
+                            </span>
+
+
+                            <a
+                                class="calendar-event-source"
+                                href="{{ event['source']['url'] }}"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+
+                                NY Fed data ↗
+
+                            </a>
+
+
+                        </div>
+
+
+                    </article>
+
+
+                {% endfor %}
+
 
             </div>
+
+
+        </section>
+
+
+
+        <div class="events-disclaimer">
+
+            Historical event classifications are produced
+            from the Liquidity Monitor's quantitative
+            framework using data available for each
+            observation period. The accompanying market
+            commentary is curated for explanatory purposes
+            and does not alter the historical signal.
 
         </div>
 
-    </section>
 
+    </div>
 
-    <!-- ======================================================
-         OVERNIGHT FUNDING
-         ====================================================== -->
-
-    <section class="funding-section">
-
-        <h2>
-            Overnight Funding
-        </h2>
-
-        <div class="section-subtitle">
-            Latest common SOFR and EFFR observation:
-            {{ snapshot.funding.observation_date }}
-        </div>
-
-
-        <div class="cards">
-
-            <div class="card">
-
-                <div class="card-title">
-                    SOFR
-                </div>
-
-                <div class="card-value">
-                    {{ "%.2f"|format(snapshot.funding.sofr) }}%
-                </div>
-
-                <div class="card-change">
-                    {{ "%+.0f"|format(snapshot.funding.sofr_change_bp) }}
-                    bp from prior day
-                </div>
-
-                <div class="card-date">
-                    Previous:
-                    {{ "%.2f"|format(snapshot.funding.previous_sofr) }}%
-                </div>
-
-            </div>
-
-
-            <div class="card">
-
-                <div class="card-title">
-                    EFFR
-                </div>
-
-                <div class="card-value">
-                    {{ "%.2f"|format(snapshot.funding.effr) }}%
-                </div>
-
-                <div class="card-change">
-                    {{ "%+.0f"|format(snapshot.funding.effr_change_bp) }}
-                    bp from prior day
-                </div>
-
-                <div class="card-date">
-                    Previous:
-                    {{ "%.2f"|format(snapshot.funding.previous_effr) }}%
-                </div>
-
-            </div>
-
-
-            <div class="card">
-
-                <div class="card-title">
-                    SOFR − EFFR
-                </div>
-
-                <div class="card-value">
-
-                    {{ "%+.0f"|format(
-                        snapshot.funding.spread_basis_points
-                    ) }}
-
-                    bp
-
-                </div>
-
-                <div class="card-change">
-
-                    {{ "%+.0f"|format(
-                        snapshot.funding.spread_change_bp
-                    ) }}
-
-                    bp from prior day
-
-                </div>
-
-                <div class="card-date">
-
-                    Previous:
-
-                    {{ "%+.0f"|format(
-                        snapshot.funding.previous_spread_basis_points
-                    ) }}
-
-                    bp
-
-                </div>
-
-            </div>
-
-
-            <div class="card">
-
-                <div class="card-title">
-                    Funding Verdict
-                </div>
-
-                <div class="card-value">
-                    {{ snapshot.assessment.funding.verdict }}
-                </div>
-
-                <div class="card-change">
-                    Historically contextualized
-                </div>
-
-                <div class="card-date">
-                    Confidence:
-                    {{ snapshot.assessment.funding.confidence }}
-                </div>
-
-            </div>
-
-        </div>
-
-    </section>
-
-
-    <!-- ======================================================
-         FUNDING HISTORY
-         ====================================================== -->
-
-    <section class="funding-section">
-
-        <h2>
-            Historical Funding Context
-        </h2>
-
-        <div class="section-subtitle">
-            SOFR − EFFR relative to the most recent
-            {{ snapshot.spread_statistics.observations_used }}
-            common observations
-        </div>
-
-
-        <div class="cards">
-
-            <div class="card">
-
-                <div class="card-title">
-                    30-Day Average
-                </div>
-
-                <div class="card-value">
-
-                    {{ "%+.2f"|format(
-                        snapshot.spread_statistics.average_30d_bp
-                    ) }}
-
-                    bp
-
-                </div>
-
-                <div class="card-change">
-                    Recent typical spread
-                </div>
-
-            </div>
-
-
-            <div class="card">
-
-                <div class="card-title">
-                    60-Day Range
-                </div>
-
-                <div class="card-value">
-
-                    {{ "%+.0f"|format(
-                        snapshot.spread_statistics.minimum_60d_bp
-                    ) }}
-
-                    to
-
-                    {{ "%+.0f"|format(
-                        snapshot.spread_statistics.maximum_60d_bp
-                    ) }}
-
-                    bp
-
-                </div>
-
-                <div class="card-change">
-                    Recent observed range
-                </div>
-
-            </div>
-
-
-            <div class="card">
-
-                <div class="card-title">
-                    60-Day Percentile
-                </div>
-
-                <div class="card-value">
-
-                    {{ "%.0f"|format(
-                        snapshot.spread_statistics.percentile_60d
-                    ) }}
-
-                </div>
-
-                <div class="card-change">
-                    Current distribution position
-                </div>
-
-            </div>
-
-
-            <div class="card">
-
-                <div class="card-title">
-                    60-Day Z-Score
-                </div>
-
-                <div class="card-value">
-
-                    {{ "%+.2f"|format(
-                        snapshot.spread_statistics.zscore_60d
-                    ) }}
-
-                </div>
-
-                <div class="card-change">
-                    Standard deviations from mean
-                </div>
-
-            </div>
-
-        </div>
-
-    </section>
-
-
-    <!-- ======================================================
-         SYSTEM LIQUIDITY PROXY
-         ====================================================== -->
-
-    <section class="funding-section">
-
-        <h2>
-            System Liquidity Proxy
-        </h2>
-
-        <div class="section-subtitle">
-            Reserve Balances + ON RRP − TGA.
-            Preliminary monitoring proxy, not a measure
-            of total financial-system liquidity.
-        </div>
-
-
-        <div class="cards">
-
-            <div class="card">
-
-                <div class="card-title">
-                    Reserve Balances
-                </div>
-
-                <div class="card-value">
-
-                    ${{ "{:,.0f}".format(
-                        snapshot.system_liquidity.reserve_balances_billions
-                    ) }}B
-
-                </div>
-
-                <div class="card-change">
-                    Banking-system reserves
-                </div>
-
-            </div>
-
-
-            <div class="card">
-
-                <div class="card-title">
-                    ON RRP
-                </div>
-
-                <div class="card-value">
-
-                    ${{ "{:,.1f}".format(
-                        snapshot.system_liquidity.on_rrp_billions
-                    ) }}B
-
-                </div>
-
-                <div class="card-change">
-                    Cash parked at the Fed
-                </div>
-
-            </div>
-
-
-            <div class="card">
-
-                <div class="card-title">
-                    Treasury General Account
-                </div>
-
-                <div class="card-value">
-
-                    ${{ "{:,.0f}".format(
-                        snapshot.system_liquidity.tga_billions
-                    ) }}B
-
-                </div>
-
-                <div class="card-change">
-                    Treasury cash balance
-                </div>
-
-            </div>
-
-
-            <div class="card">
-
-                <div class="card-title">
-                    Net Liquidity Proxy
-                </div>
-
-                <div class="card-value">
-
-                    ${{ "{:,.0f}".format(
-                        snapshot.system_liquidity.net_liquidity_proxy_billions
-                    ) }}B
-
-                </div>
-
-                <div class="card-change">
-                    Reserve + RRP − TGA
-                </div>
-
-            </div>
-
-        </div>
-
-    </section>
-
-
-    <!-- ======================================================
-         SYSTEM LIQUIDITY TREND
-         ====================================================== -->
-
-    <section class="funding-section">
-
-        <h2>
-            System Liquidity Trend
-        </h2>
-
-        <div class="section-subtitle">
-            Direction and historical position of the
-            preliminary system-liquidity proxy
-        </div>
-
-
-        <div class="cards">
-
-            <div class="card">
-
-                <div class="card-title">
-                    Weekly Change
-                </div>
-
-                <div class="card-value">
-
-                    {% if snapshot.system_liquidity.weekly_change_billions < 0 %}
-
-                        -${{ "{:,.0f}".format(
-                            -snapshot.system_liquidity.weekly_change_billions
-                        ) }}B
-
-                    {% else %}
-
-                        ${{ "{:,.0f}".format(
-                            snapshot.system_liquidity.weekly_change_billions
-                        ) }}B
-
-                    {% endif %}
-
-                </div>
-
-                <div class="card-change">
-                    Latest weekly movement
-                </div>
-
-            </div>
-
-
-            <div class="card">
-
-                <div class="card-title">
-                    4-Week Change
-                </div>
-
-                <div class="card-value">
-
-                    {% if snapshot.system_liquidity_history.four_week_change_billions < 0 %}
-
-                        -${{ "{:,.0f}".format(
-                            -snapshot.system_liquidity_history.four_week_change_billions
-                        ) }}B
-
-                    {% else %}
-
-                        ${{ "{:,.0f}".format(
-                            snapshot.system_liquidity_history.four_week_change_billions
-                        ) }}B
-
-                    {% endif %}
-
-                </div>
-
-                <div class="card-change">
-                    One-month direction
-                </div>
-
-            </div>
-
-
-            <div class="card">
-
-                <div class="card-title">
-                    13-Week Change
-                </div>
-
-                <div class="card-value">
-
-                    {% if snapshot.system_liquidity_history.thirteen_week_change_billions < 0 %}
-
-                        -${{ "{:,.0f}".format(
-                            -snapshot.system_liquidity_history.thirteen_week_change_billions
-                        ) }}B
-
-                    {% else %}
-
-                        ${{ "{:,.0f}".format(
-                            snapshot.system_liquidity_history.thirteen_week_change_billions
-                        ) }}B
-
-                    {% endif %}
-
-                </div>
-
-                <div class="card-change">
-                    Quarterly direction
-                </div>
-
-            </div>
-
-
-            <div class="card">
-
-                <div class="card-title">
-                    52-Week Position
-                </div>
-
-                <div class="card-value">
-
-                    {{ "%.0f"|format(
-                        snapshot.system_liquidity_history.percentile_52_week
-                    ) }}
-
-                </div>
-
-                <div class="card-change">
-                    Percentile of past year
-                </div>
-
-                <div class="card-date">
-
-                    Z-score:
-
-                    {{ "%+.2f"|format(
-                        snapshot.system_liquidity_history.zscore_52_week
-                    ) }}
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </section>
 
 </main>
+
 
 
 <footer>
 
     Application generated:
-    {{ snapshot.generated_at.strftime("%B %d, %Y at %H:%M UTC") }}
+
+    {{
+        snapshot.generated_at.strftime(
+            "%B %d, %Y at %H:%M UTC"
+        )
+    }}
 
     &nbsp; • &nbsp;
 
@@ -875,6 +1632,158 @@
     Federal Reserve Bank of New York and Federal Reserve
 
 </footer>
+
+
+
+<!-- ==========================================================
+     TAB CONTROLLER
+     ========================================================== -->
+
+
+<script>
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        const tabs = Array.from(
+            document.querySelectorAll(
+                "[data-tab-target]"
+            )
+        );
+
+        const panels = Array.from(
+            document.querySelectorAll(
+                "[data-tab-panel]"
+            )
+        );
+
+
+        function activateTab(
+            name,
+            updateHash = true
+        ) {
+
+            tabs.forEach(
+                function (tab) {
+
+                    const selected =
+                        tab.dataset.tabTarget === name;
+
+                    tab.setAttribute(
+                        "aria-selected",
+                        selected ? "true" : "false"
+                    );
+
+                }
+            );
+
+
+            panels.forEach(
+                function (panel) {
+
+                    const selected =
+                        panel.dataset.tabPanel === name;
+
+                    panel.hidden = !selected;
+
+                }
+            );
+
+
+            if (updateHash) {
+
+                if (name === "critical-events") {
+
+                    history.replaceState(
+                        null,
+                        "",
+                        "#critical-events"
+                    );
+
+                } else {
+
+                    history.replaceState(
+                        null,
+                        "",
+                        window.location.pathname
+                    );
+
+                }
+
+            }
+
+        }
+
+
+        tabs.forEach(
+            function (tab) {
+
+                tab.addEventListener(
+                    "click",
+                    function () {
+
+                        activateTab(
+                            tab.dataset.tabTarget
+                        );
+
+                    }
+                );
+
+            }
+        );
+
+
+        if (
+            window.location.hash ===
+            "#critical-events"
+        ) {
+
+            activateTab(
+                "critical-events",
+                false
+            );
+
+        } else {
+
+            activateTab(
+                "current",
+                false
+            );
+
+        }
+
+
+        window.addEventListener(
+            "hashchange",
+            function () {
+
+                if (
+                    window.location.hash ===
+                    "#critical-events"
+                ) {
+
+                    activateTab(
+                        "critical-events",
+                        false
+                    );
+
+                } else {
+
+                    activateTab(
+                        "current",
+                        false
+                    );
+
+                }
+
+            }
+        );
+
+    }
+);
+
+</script>
 
 
 </body>
