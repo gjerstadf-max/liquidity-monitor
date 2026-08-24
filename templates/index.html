@@ -365,163 +365,38 @@
                 <!-- FUNDING CONDITIONS -->
 
 
-                <div class="card">
+                {% for factor in snapshot.assessment.factors %}
 
-                    <div class="card-title">
-                        Funding Conditions
-                    </div>
+             <div class="card">
 
-                    <div class="card-value">
-                        {{ snapshot.assessment.funding.verdict }}
-                    </div>
+                <div class="card-title">
 
-                    <div class="card-change">
-                        {{ snapshot.assessment.funding.summary }}
-                    </div>
+                {{ factor.display_name }}
 
-                    <div class="card-date">
+            </div>
 
-                        Confidence:
-                        {{ snapshot.assessment.funding.confidence }}
+            <div class="card-value">
 
-                    </div>
+                {{ factor.assessment.verdict }}
 
-                </div>
+            </div>
 
+            <div class="card-change">
 
+                {{ factor.assessment.summary }}
 
-                <!-- SYSTEM LIQUIDITY -->
+        </div>
 
+        <div class="card-date">
 
-                <div class="card">
+            Confidence:
+            {{ factor.assessment.confidence }}
 
-                    <div class="card-title">
-                        System Liquidity
-                    </div>
+        </div>
 
-                    <div class="card-value">
+    </div>
 
-                        {{
-                            snapshot.assessment
-                            .system_liquidity
-                            .verdict
-                        }}
-
-                    </div>
-
-                    <div class="card-change">
-
-                        {{
-                            snapshot.assessment
-                            .system_liquidity
-                            .summary
-                        }}
-
-                    </div>
-
-                    <div class="card-date">
-
-                        Confidence:
-
-                        {{
-                            snapshot.assessment
-                            .system_liquidity
-                            .confidence
-                        }}
-
-                    </div>
-
-                </div>
-
-
-
-                <!-- REPO MARKET PRESSURE -->
-
-
-                <div class="card">
-
-                    <div class="card-title">
-                        Repo Market Pressure
-                    </div>
-
-                    <div class="card-value">
-
-                        {{
-                            snapshot.assessment
-                            .repo_market
-                            .verdict
-                        }}
-
-                    </div>
-
-                    <div class="card-change">
-
-                        {{
-                            snapshot.assessment
-                            .repo_market
-                            .summary
-                        }}
-
-                    </div>
-
-                    <div class="card-date">
-
-                        Confidence:
-
-                        {{
-                            snapshot.assessment
-                            .repo_market
-                            .confidence
-                        }}
-
-                    </div>
-
-                </div>
-
-
-
-                <!-- TREASURY INTERMEDIATION -->
-
-
-                <div class="card">
-
-                    <div class="card-title">
-                        Treasury Intermediation
-                    </div>
-
-                    <div class="card-value">
-
-                        {{
-                            snapshot.assessment
-                            .treasury_intermediation
-                            .verdict
-                        }}
-
-                    </div>
-
-                    <div class="card-change">
-
-                        {{
-                            snapshot.assessment
-                            .treasury_intermediation
-                            .summary
-                        }}
-
-                    </div>
-
-                    <div class="card-date">
-
-                        Confidence:
-
-                        {{
-                            snapshot.assessment
-                            .treasury_intermediation
-                            .confidence
-                        }}
-
-                    </div>
-
-                </div>
+{% endfor %}
 
 
 

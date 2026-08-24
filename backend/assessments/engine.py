@@ -316,6 +316,9 @@ def build_liquidity_assessment(
             key=
                 definition.key,
 
+            display_name=
+                definition.display_name,
+
             assessment=
                 definition.assessor(),
         )

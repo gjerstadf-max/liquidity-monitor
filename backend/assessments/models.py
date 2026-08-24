@@ -18,6 +18,7 @@ class FactorAssessment:
     """
 
     key: str
+    display_name: str
     assessment: Assessment
 
 
