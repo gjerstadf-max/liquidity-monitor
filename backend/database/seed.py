@@ -1,696 +1,225 @@
 from __future__ import annotations
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from backend.database.connection import get_session
+from backend.catalog.series import (
+    SERIES_CATALOG,
+    validate_series_catalog,
+)
+from backend.database.connection import (
+    get_session,
+)
 from backend.database.models import (
     DataSource,
     Indicator,
 )
 
 
-def seed_database() -> None:
+# =============================================================
+# DATA SOURCE
+# =============================================================
 
-    with get_session() as session:
 
-        # =====================================================
-        # NEW YORK FED DATA SOURCE
-        # =====================================================
+def _get_or_create_ny_fed(
+    session: Session,
+) -> DataSource:
+    """
+    Return the existing NY Fed data-source record,
+    or create it if the database is being initialized
+    for the first time.
 
-        ny_fed = session.scalar(
-            select(DataSource).where(
-                DataSource.short_name
-                == "NY Fed"
+    NOTE:
+    Indicator.source_id currently preserves the
+    application's existing single-source convention.
+
+    Provider-specific source attribution will be handled
+    separately from this structural refactor.
+    """
+
+    ny_fed = session.scalar(
+        select(
+            DataSource
+        ).where(
+            DataSource.short_name
+            == "NY Fed"
+        )
+    )
+
+    if ny_fed is not None:
+
+        print(
+            "Data source already exists: "
+            "NY Fed"
+        )
+
+        return ny_fed
+
+
+    ny_fed = DataSource(
+        name=(
+            "Federal Reserve Bank "
+            "of New York"
+        ),
+        short_name="NY Fed",
+        website=(
+            "https://www.newyorkfed.org/"
+        ),
+        is_primary=True,
+    )
+
+    session.add(
+        ny_fed
+    )
+
+    session.flush()
+
+    print(
+        "Added data source: NY Fed"
+    )
+
+    return ny_fed
+
+
+# =============================================================
+# INDICATOR SEEDING
+# =============================================================
+
+
+def _seed_indicators(
+    session: Session,
+    source: DataSource,
+) -> None:
+    """
+    Ensure every catalog series has an Indicator row.
+
+    Existing indicators are left unchanged.
+
+    This preserves the idempotent behavior of the
+    previous database seeder.
+    """
+
+    for definition in SERIES_CATALOG:
+
+        existing = session.scalar(
+            select(
+                Indicator
+            ).where(
+                Indicator.symbol
+                == definition.symbol
             )
         )
 
 
-        if ny_fed is None:
-
-            ny_fed = DataSource(
-                name=(
-                    "Federal Reserve Bank "
-                    "of New York"
-                ),
-                short_name="NY Fed",
-                website=(
-                    "https://www.newyorkfed.org/"
-                ),
-                is_primary=True,
-            )
-
-            session.add(
-                ny_fed
-            )
-
-            session.flush()
+        if existing is not None:
 
             print(
-                "Added data source: NY Fed"
+                "Indicator already exists: "
+                f"{definition.symbol.upper()}"
             )
 
-        else:
+            continue
 
-            print(
-                "Data source already exists: "
-                "NY Fed"
+
+        indicator = Indicator(
+            symbol=
+                definition.symbol,
+
+            name=
+                definition.name,
+
+            category=
+                definition.category,
+
+            frequency=
+                definition.frequency,
+
+            units=
+                definition.units,
+
+            source_id=
+                source.id,
+
+            active=
+                definition.active,
+        )
+
+
+        session.add(
+            indicator
+        )
+
+
+        print(
+            "Added indicator: "
+            f"{definition.symbol.upper()}"
+        )
+
+
+# =============================================================
+# PUBLIC SEED FUNCTION
+# =============================================================
+
+
+def seed_database() -> None:
+    """
+    Seed the Liquidity Monitor reference tables.
+
+    The market-data catalog is now the canonical source
+    for indicator definitions.
+
+    Running this function repeatedly is safe.
+    """
+
+    validate_series_catalog()
+
+
+    print()
+
+    print(
+        "Seeding Liquidity Monitor database"
+    )
+
+    print(
+        "=================================="
+    )
+
+
+    with get_session() as session:
+
+        source = (
+            _get_or_create_ny_fed(
+                session
             )
+        )
 
 
-        # =====================================================
-        # INDICATORS
-        # =====================================================
+        _seed_indicators(
+            session=
+                session,
 
-        indicator_definitions = [
-
-            # -------------------------------------------------
-            # CORE FUNDING RATES
-            # -------------------------------------------------
-
-            {
-                "symbol": "sofr",
-                "name": (
-                    "Secured Overnight "
-                    "Financing Rate"
-                ),
-                "category": "Funding",
-                "frequency": "Daily",
-                "units": "Percent",
-            },
-
-            {
-                "symbol": "effr",
-                "name": (
-                    "Effective Federal "
-                    "Funds Rate"
-                ),
-                "category": "Funding",
-                "frequency": "Daily",
-                "units": "Percent",
-            },
-
-            {
-                "symbol": "obfr",
-                "name": (
-                    "Overnight Bank "
-                    "Funding Rate"
-                ),
-                "category": "Funding",
-                "frequency": "Daily",
-                "units": "Percent",
-            },
-
-
-            # -------------------------------------------------
-            # REPO REFERENCE RATES
-            # -------------------------------------------------
-
-            {
-                "symbol": "tgcr",
-                "name": (
-                    "Tri-Party General "
-                    "Collateral Rate"
-                ),
-                "category":
-                    "Repo Market",
-                "frequency":
-                    "Daily",
-                "units":
-                    "Percent",
-            },
-
-            {
-                "symbol": "bgcr",
-                "name": (
-                    "Broad General "
-                    "Collateral Rate"
-                ),
-                "category":
-                    "Repo Market",
-                "frequency":
-                    "Daily",
-                "units":
-                    "Percent",
-            },
-
-
-            # -------------------------------------------------
-            # SOFR INTERNALS
-            # -------------------------------------------------
-
-            {
-                "symbol":
-                    "sofr_volume",
-
-                "name":
-                    "SOFR Transaction Volume",
-
-                "category":
-                    "Repo Market",
-
-                "frequency":
-                    "Daily",
-
-                "units":
-                    "USD Billions",
-            },
-
-            {
-                "symbol":
-                    "sofr_p1",
-
-                "name":
-                    "SOFR 1st Percentile",
-
-                "category":
-                    "Repo Market",
-
-                "frequency":
-                    "Daily",
-
-                "units":
-                    "Percent",
-            },
-
-            {
-                "symbol":
-                    "sofr_p25",
-
-                "name":
-                    "SOFR 25th Percentile",
-
-                "category":
-                    "Repo Market",
-
-                "frequency":
-                    "Daily",
-
-                "units":
-                    "Percent",
-            },
-
-            {
-                "symbol":
-                    "sofr_p75",
-
-                "name":
-                    "SOFR 75th Percentile",
-
-                "category":
-                    "Repo Market",
-
-                "frequency":
-                    "Daily",
-
-                "units":
-                    "Percent",
-            },
-
-            {
-                "symbol":
-                    "sofr_p99",
-
-                "name":
-                    "SOFR 99th Percentile",
-
-                "category":
-                    "Repo Market",
-
-                "frequency":
-                    "Daily",
-
-                "units":
-                    "Percent",
-            },
-
-
-            # -------------------------------------------------
-            # TGCR INTERNALS
-            # -------------------------------------------------
-
-            {
-                "symbol":
-                    "tgcr_volume",
-
-                "name":
-                    "TGCR Transaction Volume",
-
-                "category":
-                    "Repo Market",
-
-                "frequency":
-                    "Daily",
-
-                "units":
-                    "USD Billions",
-            },
-
-            {
-                "symbol":
-                    "tgcr_p1",
-
-                "name":
-                    "TGCR 1st Percentile",
-
-                "category":
-                    "Repo Market",
-
-                "frequency":
-                    "Daily",
-
-                "units":
-                    "Percent",
-            },
-
-            {
-                "symbol":
-                    "tgcr_p25",
-
-                "name":
-                    "TGCR 25th Percentile",
-
-                "category":
-                    "Repo Market",
-
-                "frequency":
-                    "Daily",
-
-                "units":
-                    "Percent",
-            },
-
-            {
-                "symbol":
-                    "tgcr_p75",
-
-                "name":
-                    "TGCR 75th Percentile",
-
-                "category":
-                    "Repo Market",
-
-                "frequency":
-                    "Daily",
-
-                "units":
-                    "Percent",
-            },
-
-            {
-                "symbol":
-                    "tgcr_p99",
-
-                "name":
-                    "TGCR 99th Percentile",
-
-                "category":
-                    "Repo Market",
-
-                "frequency":
-                    "Daily",
-
-                "units":
-                    "Percent",
-            },
-
-
-            # -------------------------------------------------
-            # BGCR INTERNALS
-            # -------------------------------------------------
-
-            {
-                "symbol":
-                    "bgcr_volume",
-
-                "name":
-                    "BGCR Transaction Volume",
-
-                "category":
-                    "Repo Market",
-
-                "frequency":
-                    "Daily",
-
-                "units":
-                    "USD Billions",
-            },
-
-            {
-                "symbol":
-                    "bgcr_p1",
-
-                "name":
-                    "BGCR 1st Percentile",
-
-                "category":
-                    "Repo Market",
-
-                "frequency":
-                    "Daily",
-
-                "units":
-                    "Percent",
-            },
-
-            {
-                "symbol":
-                    "bgcr_p25",
-
-                "name":
-                    "BGCR 25th Percentile",
-
-                "category":
-                    "Repo Market",
-
-                "frequency":
-                    "Daily",
-
-                "units":
-                    "Percent",
-            },
-
-            {
-                "symbol":
-                    "bgcr_p75",
-
-                "name":
-                    "BGCR 75th Percentile",
-
-                "category":
-                    "Repo Market",
-
-                "frequency":
-                    "Daily",
-
-                "units":
-                    "Percent",
-            },
-
-            {
-                "symbol":
-                    "bgcr_p99",
-
-                "name":
-                    "BGCR 99th Percentile",
-
-                "category":
-                    "Repo Market",
-
-                "frequency":
-                    "Daily",
-
-                "units":
-                    "Percent",
-            },
-
-                        # -------------------------------------------------
-            # TREASURY INTERMEDIATION
-            # -------------------------------------------------
-
-            {
-                "symbol":
-                    "pd_treasury_positions",
-
-                "name":
-                    "Primary Dealer Treasury Positions",
-
-                "category":
-                    "Treasury Intermediation",
-
-                "frequency":
-                    "Weekly",
-
-                "units":
-                    "USD Billions",
-            },
-
-            {
-                "symbol":
-                    "pd_treasury_transactions",
-
-                "name":
-                    "Primary Dealer Treasury Transactions",
-
-                "category":
-                    "Treasury Intermediation",
-
-                "frequency":
-                    "Weekly",
-
-                "units":
-                    "USD Billions",
-            },
-
-            {
-                "symbol":
-                    "pd_treasury_repo",
-
-                "name":
-                    "Primary Dealer Treasury Repo Financing",
-
-                "category":
-                    "Treasury Intermediation",
-
-                "frequency":
-                    "Weekly",
-
-                "units":
-                    "USD Billions",
-            },
-
-            {
-                "symbol":
-                    "pd_treasury_reverse_repo",
-
-                "name":
-                    "Primary Dealer Treasury Reverse Repo Financing",
-
-                "category":
-                    "Treasury Intermediation",
-
-                "frequency":
-                    "Weekly",
-
-                "units":
-                    "USD Billions",
-            },
-
-            {
-                "symbol":
-                    "pd_treasury_borrowed",
-
-                "name":
-                    "Primary Dealer Treasury Securities Borrowed",
-
-                "category":
-                    "Treasury Intermediation",
-
-                "frequency":
-                    "Weekly",
-
-                "units":
-                    "USD Billions",
-            },
-
-            {
-                "symbol":
-                    "pd_treasury_lent",
-
-                "name":
-                    "Primary Dealer Treasury Securities Lent",
-
-                "category":
-                    "Treasury Intermediation",
-
-                "frequency":
-                    "Weekly",
-
-                "units":
-                    "USD Billions",
-            },
-
-            {
-                "symbol":
-                    "pd_treasury_fails_receive",
-
-                "name":
-                    "Primary Dealer Treasury Fails to Receive",
-
-                "category":
-                    "Treasury Intermediation",
-
-                "frequency":
-                    "Weekly",
-
-                "units":
-                    "USD Billions",
-            },
-
-            {
-                "symbol":
-                    "pd_treasury_fails_deliver",
-
-                "name":
-                    "Primary Dealer Treasury Fails to Deliver",
-
-                "category":
-                    "Treasury Intermediation",
-
-                "frequency":
-                    "Weekly",
-
-                "units":
-                    "USD Billions",
-            },
-
-
-            # -------------------------------------------------
-            # SYSTEM LIQUIDITY
-            # -------------------------------------------------
-
-            {
-                "symbol":
-                    "reserve_balances",
-
-                "name":
-                    (
-                        "Reserve Balances with "
-                        "Federal Reserve Banks"
-                    ),
-
-                "category":
-                    "Funding",
-
-                "frequency":
-                    "Daily",
-
-                "units":
-                    "USD Billions",
-            },
-
-            {
-                "symbol":
-                    "tga",
-
-                "name":
-                    (
-                        "U.S. Treasury "
-                        "General Account"
-                    ),
-
-                "category":
-                    "Funding",
-
-                "frequency":
-                    "Daily",
-
-                "units":
-                    "USD Billions",
-            },
-
-            {
-                "symbol":
-                    "on_rrp",
-
-                "name":
-                    (
-                        "Overnight Reverse "
-                        "Repurchase Agreements"
-                    ),
-
-                "category":
-                    "Funding",
-
-                "frequency":
-                    "Daily",
-
-                "units":
-                    "USD Billions",
-            },
-        ]
-
-
-        # =====================================================
-        # IDEMPOTENT INSERT
-        # =====================================================
-
-        for definition in (
-            indicator_definitions
-        ):
-
-            existing = session.scalar(
-                select(
-                    Indicator
-                ).where(
-                    Indicator.symbol
-                    == definition[
-                        "symbol"
-                    ]
-                )
-            )
-
-
-            if existing is not None:
-
-                print(
-                    "Indicator already exists: "
-                    f"{definition['symbol'].upper()}"
-                )
-
-                continue
-
-
-            indicator = Indicator(
-                symbol=
-                    definition[
-                        "symbol"
-                    ],
-
-                name=
-                    definition[
-                        "name"
-                    ],
-
-                category=
-                    definition[
-                        "category"
-                    ],
-
-                frequency=
-                    definition[
-                        "frequency"
-                    ],
-
-                units=
-                    definition[
-                        "units"
-                    ],
-
-                source_id=
-                    ny_fed.id,
-
-                active=True,
-            )
-
-
-            session.add(
-                indicator
-            )
-
-
-            print(
-                "Added indicator: "
-                f"{definition['symbol'].upper()}"
-            )
+            source=
+                source,
+        )
 
 
         session.commit()
 
-        print()
-        print(
-            "Database seed complete."
-        )
+
+    print()
+
+    print(
+        "Database seed complete."
+    )
+
+    print(
+        f"Catalog indicators: "
+        f"{len(SERIES_CATALOG)}"
+    )
+
+    print()
 
 
 if __name__ == "__main__":
+
     seed_database()

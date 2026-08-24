@@ -4,34 +4,32 @@ from backend.database.seed import (
     seed_database,
 )
 from backend.services.provider_refresh import (
-    refresh_nyfed_reverse_repo,
+    refresh_fred_provider,
 )
 
 
 def main() -> None:
-    """
-    Refresh catalog-defined New York Fed
-    overnight reverse-repo data.
-    """
 
     print()
 
     print(
-        "Liquidity Monitor — "
-        "ON RRP Refresh"
+        "Liquidity Monitor — FRED Refresh"
     )
 
     print(
         "=" * 72
     )
 
+
+    # Make sure catalog-defined indicators
+    # exist before ingestion.
 
     seed_database()
 
 
-    refresh_nyfed_reverse_repo(
+    refresh_fred_provider(
         observation_count=
-            400
+            100
     )
 
 
@@ -42,7 +40,7 @@ def main() -> None:
     )
 
     print(
-        "ON RRP refresh complete."
+        "FRED refresh complete."
     )
 
 
