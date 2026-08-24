@@ -147,10 +147,6 @@ def _funding_what_matters() -> str:
 
 def _system_liquidity_what_matters() -> str:
 
-    current = (
-        system_liquidity_metrics()
-    )
-
     history = (
         system_liquidity_history_metrics()
     )
@@ -435,7 +431,29 @@ def _treasury_intermediation_watch(
         "market functioning begins to normalize or whether "
         "the disruption persists across multiple weeks."
     )
+# =============================================================
+# FACTOR COMMENTARY REGISTRY
+# =============================================================
 
+
+MORNING_BRIEF_FACTORS = {
+    "funding": (
+        _funding_what_matters,
+        _funding_watch,
+    ),
+    "system_liquidity": (
+        _system_liquidity_what_matters,
+        _system_liquidity_watch,
+    ),
+    "repo_market": (
+        _repo_what_matters,
+        _repo_watch,
+    ),
+    "treasury_intermediation": (
+        _treasury_intermediation_what_matters,
+        _treasury_intermediation_watch,
+    ),
+}
 
 # =============================================================
 # BUILD MORNING BRIEF
@@ -457,30 +475,40 @@ def build_morning_brief(
             build_liquidity_assessment()
         )
 
-    what_matters = [
-        _funding_what_matters(),
-        _system_liquidity_what_matters(),
-        _repo_what_matters(),
-        _treasury_intermediation_what_matters(),
-    ]
+    what_matters: list[str] = []
+    what_to_watch: list[str] = []
 
-    what_to_watch = [
-        _funding_watch(
-            assessment.funding.verdict
-        ),
 
-        _system_liquidity_watch(
-            assessment.system_liquidity.verdict
-        ),
+    for factor in assessment.factors:
 
-        _repo_watch(
-            assessment.repo_market.verdict
-        ),
+        commentary = (
+            MORNING_BRIEF_FACTORS.get(
+                factor.key
+        )
+    )
 
-        _treasury_intermediation_watch(
-            assessment.treasury_intermediation.verdict
-        ),
-    ]
+    if commentary is None:
+
+        raise RuntimeError(
+            "No Morning Brief commentary "
+            "registered for factor: "
+            f"{factor.key}"
+        )
+
+    (
+        what_matters_builder,
+        watch_builder,
+    ) = commentary
+
+    what_matters.append(
+        what_matters_builder()
+    )
+
+    what_to_watch.append(
+        watch_builder(
+            factor.assessment.verdict
+        )
+    )
 
     return MorningBrief(
         headline=

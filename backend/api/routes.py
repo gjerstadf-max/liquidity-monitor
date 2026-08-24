@@ -7,11 +7,36 @@ from backend.services.funding_history import (
     get_funding_history,
 )
 
-
 router = APIRouter(
     prefix="/api",
     tags=["Liquidity Monitor"],
 )
+
+def _assessment_factors(
+    assessment,
+) -> dict[str, dict[str, str]]:
+    """
+    Serialize all registered factor assessments.
+
+    Factor keys come from the assessment registry.
+    Individual factor economics remain outside the API.
+    """
+
+    return {
+        factor.key: {
+            "verdict":
+                factor.assessment.verdict,
+
+            "confidence":
+                factor.assessment.confidence,
+
+            "summary":
+                factor.assessment.summary,
+        }
+
+        for factor
+        in assessment.factors
+    }
 
 
 # =============================================================
@@ -48,99 +73,19 @@ def get_snapshot():
         # -----------------------------------------------------
 
         "assessment": {
-            "overall_verdict":
-                snapshot.assessment.overall_verdict,
+          "overall_verdict":
+            snapshot.assessment.overall_verdict,
 
-            "confidence":
-                snapshot.assessment.confidence,
+        "confidence":
+            snapshot.assessment.confidence,
 
-            "summary":
-                snapshot.assessment.summary,
+        "summary":
+            snapshot.assessment.summary,
 
-            # -------------------------------------------------
-            # FUNDING
-            # -------------------------------------------------
-
-            "funding": {
-                "verdict":
-                    snapshot.assessment
-                    .funding
-                    .verdict,
-
-                "confidence":
-                    snapshot.assessment
-                    .funding
-                    .confidence,
-
-                "summary":
-                    snapshot.assessment
-                    .funding
-                    .summary,
-            },
-
-            # -------------------------------------------------
-            # SYSTEM LIQUIDITY
-            # -------------------------------------------------
-
-            "system_liquidity": {
-                "verdict":
-                    snapshot.assessment
-                    .system_liquidity
-                    .verdict,
-
-                "confidence":
-                    snapshot.assessment
-                    .system_liquidity
-                    .confidence,
-
-                "summary":
-                    snapshot.assessment
-                    .system_liquidity
-                    .summary,
-            },
-
-            # -------------------------------------------------
-            # REPO MARKET PRESSURE
-            # -------------------------------------------------
-
-            "repo_market": {
-                "verdict":
-                    snapshot.assessment
-                    .repo_market
-                    .verdict,
-
-                "confidence":
-                    snapshot.assessment
-                    .repo_market
-                    .confidence,
-
-                "summary":
-                    snapshot.assessment
-                    .repo_market
-                    .summary,
-            },
-
-            # -------------------------------------------------
-            # TREASURY INTERMEDIATION
-            # -------------------------------------------------
-
-            "treasury_intermediation": {
-                "verdict":
-                    snapshot.assessment
-                    .treasury_intermediation
-                    .verdict,
-
-                "confidence":
-                    snapshot.assessment
-                    .treasury_intermediation
-                    .confidence,
-
-                "summary":
-                    snapshot.assessment
-                    .treasury_intermediation
-                    .summary,
-            },
-        },
+        **_assessment_factors(
+            snapshot.assessment
+        ),
+    },
 
         # -----------------------------------------------------
         # FUNDING SNAPSHOT
