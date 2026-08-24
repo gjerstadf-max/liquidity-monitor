@@ -2,7 +2,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal
+
+from decimal import (
+    Decimal,
+    InvalidOperation,
+)
+
+from backend.collectors.nyfed_primary_dealers import (
+    fetch_primary_dealer_timeseries,
+)
+
 
 from backend.catalog.series import (
     SeriesDefinition,
@@ -18,6 +27,9 @@ from backend.collectors.nyfed import (
 from backend.services.observation_store import (
     StoreResult,
     store_values,
+)
+from backend.collectors.nyfed_rrp import (
+    fetch_latest_reverse_repo,
 )
 
 
@@ -801,5 +813,597 @@ def refresh_nyfed_reference_rates(
         f"{provider_result.skipped}"
     )
 
+
+    return provider_result
+
+# =============================================================
+# NY FED ON RRP — PROVIDER REFRESH
+# =============================================================
+
+
+def refresh_nyfed_reverse_repo(
+    observation_count: int = 400,
+) -> ProviderRefreshResult:
+    """
+    Refresh all active New York Fed reverse-repo series
+    registered in the market-data catalog.
+
+    At present the catalog contains one series:
+
+        on_rrp
+
+    Values arrive from the New York Fed in dollars and are
+    normalized according to the catalog transform.
+    """
+
+    definitions = (
+        series_for_provider(
+            "nyfed_reverse_repo"
+        )
+    )
+
+
+    if not definitions:
+
+        raise RuntimeError(
+            "No active NY Fed reverse-repo "
+            "series are registered."
+        )
+
+
+    print()
+
+    print(
+        "New York Fed ON RRP"
+    )
+
+    print(
+        "=" * 72
+    )
+
+
+    # ---------------------------------------------------------
+    # FETCH ONCE
+    # ---------------------------------------------------------
+
+    observations = (
+        fetch_latest_reverse_repo(
+            observation_count
+        )
+    )
+
+
+    if not observations:
+
+        raise RuntimeError(
+            "New York Fed returned no "
+            "ON RRP observations."
+        )
+
+
+    results: list[
+        StoreResult
+    ] = []
+
+
+    # ---------------------------------------------------------
+    # PROCESS CATALOG SERIES
+    # ---------------------------------------------------------
+
+    for definition in definitions:
+
+        print()
+
+        print(
+            definition.symbol.upper()
+        )
+
+        print(
+            f"Stored units: "
+            f"{definition.units}"
+        )
+
+
+        # ON RRP currently maps to total accepted dollars.
+        #
+        # The conversion to billions comes from the catalog
+        # transform rather than being hardcoded in the loader.
+
+        values = [
+
+            (
+                observation.operation_date,
+
+                normalize_value(
+                    value=
+                        observation.total_accepted_dollars,
+
+                    transform=
+                        definition.transform,
+                ),
+            )
+
+            for observation
+            in observations
+        ]
+
+
+        result = (
+            store_values(
+                indicator_symbol=
+                    definition.symbol,
+
+                values=
+                    values,
+            )
+        )
+
+
+        results.append(
+            result
+        )
+
+
+        print(
+            f"Received: "
+            f"{result.received}"
+        )
+
+        print(
+            f"Inserted: "
+            f"{result.inserted}"
+        )
+
+        print(
+            f"Skipped:  "
+            f"{result.skipped}"
+        )
+
+
+        if (
+            result.latest_date
+            is not None
+        ):
+
+            print(
+                f"Latest:   "
+                f"{result.latest_date}"
+            )
+
+
+        if (
+            result.latest_value
+            is not None
+        ):
+
+            print(
+                "Value:    "
+                f"${result.latest_value:,.3f}B"
+            )
+
+
+    provider_result = (
+        ProviderRefreshResult(
+            provider=
+                "nyfed_reverse_repo",
+
+            series_results=
+                tuple(
+                    results
+                ),
+        )
+    )
+
+
+    print()
+
+    print(
+        "-" * 72
+    )
+
+    print(
+        "NY Fed ON RRP refresh complete."
+    )
+
+    print(
+        f"Inserted: "
+        f"{provider_result.inserted}"
+    )
+
+    print(
+        f"Skipped:  "
+        f"{provider_result.skipped}"
+    )
+
+
+    return provider_result
+# =============================================================
+# NY FED PRIMARY DEALERS — PROVIDER REFRESH
+# =============================================================
+
+
+PRIMARY_DEALER_CANONICAL_START_DATE = date(
+    2013,
+    4,
+    3,
+)
+
+
+def _extract_primary_dealer_values(
+    payload: dict,
+    definition: SeriesDefinition,
+) -> tuple[
+    list[
+        tuple[
+            date,
+            Decimal,
+        ]
+    ],
+    int,
+]:
+    """
+    Convert one NY Fed Primary Dealer response into
+    normalized Liquidity Monitor date/value observations.
+
+    Primary Dealer source values may contain suppressed
+    observations. Suppressed or missing values remain
+    missing and are never converted to zero.
+
+    Canonical Treasury-intermediation history begins
+    April 3, 2013.
+
+    Unit normalization is controlled by the market-data
+    catalog through definition.transform.
+    """
+
+    pd_payload = payload.get(
+        "pd"
+    )
+
+    if not isinstance(
+        pd_payload,
+        dict,
+    ):
+        raise RuntimeError(
+            "Primary Dealer response did not "
+            "contain a pd object."
+        )
+
+    records = pd_payload.get(
+        "timeseries"
+    )
+
+    if not isinstance(
+        records,
+        list,
+    ):
+        raise RuntimeError(
+            "Primary Dealer response did not "
+            "contain a timeseries list."
+        )
+
+    values: list[
+        tuple[
+            date,
+            Decimal,
+        ]
+    ] = []
+
+    suppressed = 0
+
+    for record in records:
+
+        if not isinstance(
+            record,
+            dict,
+        ):
+            continue
+
+        raw_date = record.get(
+            "asofdate"
+        )
+
+        raw_value = record.get(
+            "value"
+        )
+
+        if raw_date is None:
+            continue
+
+        try:
+            observation_date = (
+                date.fromisoformat(
+                    str(
+                        raw_date
+                    )
+                )
+            )
+
+        except ValueError:
+            continue
+
+        if (
+            observation_date
+            < PRIMARY_DEALER_CANONICAL_START_DATE
+        ):
+            continue
+
+        value_text = (
+            ""
+            if raw_value is None
+            else str(
+                raw_value
+            ).strip()
+        )
+
+        # -----------------------------------------------------
+        # SUPPRESSED / MISSING
+        # -----------------------------------------------------
+
+        if value_text in {
+            "",
+            "*",
+            "NA",
+            "N/A",
+            "null",
+            "None",
+        }:
+            suppressed += 1
+            continue
+
+        # -----------------------------------------------------
+        # NUMERIC
+        # -----------------------------------------------------
+
+        try:
+            source_value = Decimal(
+                value_text
+            )
+
+        except (
+            InvalidOperation,
+            ValueError,
+        ):
+            suppressed += 1
+            continue
+
+        normalized_value = (
+            normalize_value(
+                value=
+                    source_value,
+
+                transform=
+                    definition.transform,
+            )
+        )
+
+        values.append(
+            (
+                observation_date,
+                normalized_value,
+            )
+        )
+
+    return (
+        sorted(
+            values,
+            key=lambda item:
+                item[0],
+        ),
+        suppressed,
+    )
+
+
+def refresh_nyfed_primary_dealer_series(
+    definition: SeriesDefinition,
+) -> StoreResult:
+    """
+    Refresh one catalog-defined NY Fed Primary Dealer
+    series.
+    """
+
+    if (
+        definition.provider
+        != "nyfed_primary_dealers"
+    ):
+        raise ValueError(
+            "Series is not configured for "
+            "NY Fed Primary Dealers: "
+            f"{definition.symbol}"
+        )
+
+    if not definition.external_id:
+        raise ValueError(
+            "Primary Dealer series has no "
+            "external ID: "
+            f"{definition.symbol}"
+        )
+
+    payload = (
+        fetch_primary_dealer_timeseries(
+            key_id=
+                definition.external_id,
+
+            series_break=
+                None,
+        )
+    )
+
+    (
+        values,
+        suppressed,
+    ) = (
+        _extract_primary_dealer_values(
+            payload=
+                payload,
+
+            definition=
+                definition,
+        )
+    )
+
+    result = (
+        store_values(
+            indicator_symbol=
+                definition.symbol,
+
+            values=
+                values,
+        )
+    )
+
+    print(
+        f"Suppressed/missing: "
+        f"{suppressed}"
+    )
+
+    return result
+
+
+def refresh_nyfed_primary_dealers(
+) -> ProviderRefreshResult:
+    """
+    Refresh every active NY Fed Primary Dealer series
+    registered in the market-data catalog.
+
+    The catalog determines:
+        - internal symbol
+        - NY Fed external key
+        - stored units
+        - normalization transform
+        - factor role
+
+    Primary-Dealer-specific parsing and reporting-regime
+    handling remain explicit in this provider layer.
+    """
+
+    definitions = (
+        series_for_provider(
+            "nyfed_primary_dealers"
+        )
+    )
+
+    if not definitions:
+        raise RuntimeError(
+            "No active NY Fed Primary Dealer "
+            "series are registered."
+        )
+
+    print()
+
+    print(
+        "New York Fed Primary Dealers"
+    )
+
+    print(
+        "=" * 72
+    )
+
+    print(
+        "Canonical history begins "
+        f"{PRIMARY_DEALER_CANONICAL_START_DATE}."
+    )
+
+    results: list[
+        StoreResult
+    ] = []
+
+    for definition in definitions:
+
+        print()
+
+        print(
+            definition.symbol.upper()
+        )
+
+        print(
+            "-" * 72
+        )
+
+        print(
+            "NY Fed key: "
+            f"{definition.external_id}"
+        )
+
+        print(
+            "Stored units: "
+            f"{definition.units}"
+        )
+
+        print(
+            "Factor role: "
+            f"{definition.role}"
+        )
+
+        result = (
+            refresh_nyfed_primary_dealer_series(
+                definition=
+                    definition,
+            )
+        )
+
+        results.append(
+            result
+        )
+
+        _print_store_result(
+            result
+        )
+
+        if (
+            result.latest_date
+            is not None
+        ):
+            print(
+                "Latest:   "
+                f"{result.latest_date}"
+            )
+
+        if (
+            result.latest_value
+            is not None
+        ):
+            print(
+                "Value:    "
+                f"{result.latest_value}"
+            )
+
+    provider_result = (
+        ProviderRefreshResult(
+            provider=
+                "nyfed_primary_dealers",
+
+            series_results=
+                tuple(
+                    results
+                ),
+        )
+    )
+
+    print()
+
+    print(
+        "-" * 72
+    )
+
+    print(
+        "NY Fed Primary Dealer "
+        "provider refresh complete."
+    )
+
+    print(
+        "Stored catalog series: "
+        f"{len(results)}"
+    )
+
+    print(
+        f"Inserted: "
+        f"{provider_result.inserted}"
+    )
+
+    print(
+        f"Skipped:  "
+        f"{provider_result.skipped}"
+    )
 
     return provider_result

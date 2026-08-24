@@ -1,80 +1,13 @@
 from __future__ import annotations
 
-import subprocess
-import sys
-from datetime import datetime, timezone
+from datetime import (
+    datetime,
+    timezone,
+)
 
-from backend.database.seed import seed_database
-
-
-# =============================================================
-# DATA LOADERS
-# =============================================================
-
-
-LOADERS = [
-
-    (
-        "NY Fed Reference Rates",
-        "scripts.load_reference_rates",
-    ),
-
-    (
-        "ON RRP",
-        "scripts.load_reverse_repo",
-    ),
-
-    (
-        "FRED Market Data",
-        "scripts.load_fred",
-    ),
-
-    (
-        "Primary Dealer Treasury Data",
-        "scripts.load_primary_dealer_treasury",
-    ),
-]
-
-
-# =============================================================
-# RUN ONE LOADER
-# =============================================================
-
-
-def run_loader(
-    name: str,
-    module: str,
-) -> None:
-    """
-    Run one ingestion module using the
-    current Python interpreter.
-
-    Stop immediately if the loader fails.
-    """
-
-    print()
-    print("=" * 60)
-    print(f"Refreshing {name}")
-    print("=" * 60)
-
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            module,
-        ],
-        check=False,
-    )
-
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"{name} refresh failed "
-            f"with exit code "
-            f"{result.returncode}."
-        )
-
-    print()
-    print(f"{name}: COMPLETE")
+from backend.services.market_data_refresh import (
+    refresh_market_data,
+)
 
 
 # =============================================================
@@ -84,18 +17,11 @@ def run_loader(
 
 def daily_refresh() -> None:
     """
-    Refresh all Liquidity Monitor data sources.
+    Run the Liquidity Monitor production
+    market-data refresh.
 
-    The database indicator catalog is seeded first.
-    Seeding is idempotent and ensures new indicators
-    exist before any loader attempts to write data.
-
-    Order:
-        0. Seed / verify indicator catalog
-        1. NY Fed Reference Rates
-        2. ON RRP
-        3. FRED Market Data
-        4. Primary Dealer Treasury Data
+    Individual providers and their catalog-defined
+    series are managed by refresh_market_data().
 
     Metrics, signals, assessments and commentary are
     calculated from the database when requested.
@@ -106,45 +32,47 @@ def daily_refresh() -> None:
     )
 
     print()
+
     print(
         "Liquidity Monitor Daily Refresh"
     )
-    print("=" * 60)
+
+    print(
+        "=" * 72
+    )
 
     print(
         "Started: "
         f"{started_at.isoformat()}"
     )
 
-    # =========================================================
-    # SEED INDICATOR CATALOG
-    # =========================================================
-
-    print()
-    print("=" * 60)
-    print(
-        "Verifying indicator catalog"
-    )
-    print("=" * 60)
+    # ---------------------------------------------------------
+    # MARKET DATA
+    # ---------------------------------------------------------
 
     try:
 
-        seed_database()
+        result = (
+            refresh_market_data()
+        )
 
     except Exception as exc:
 
         print()
-        print("=" * 60)
+
+        print(
+            "=" * 72
+        )
+
         print(
             "DAILY REFRESH FAILED"
         )
-        print("=" * 60)
+
+        print(
+            "=" * 72
+        )
 
         print()
-        print(
-            "Failed component: "
-            "Indicator catalog"
-        )
 
         print(
             f"Error: {exc}"
@@ -152,96 +80,52 @@ def daily_refresh() -> None:
 
         raise
 
-    print()
-    print(
-        "Indicator catalog: COMPLETE"
-    )
-
-    completed: list[str] = []
-
-    # =========================================================
-    # RUN LOADERS SEQUENTIALLY
-    # =========================================================
-
-    for name, module in LOADERS:
-
-        try:
-
-            run_loader(
-                name=name,
-                module=module,
-            )
-
-            completed.append(
-                name
-            )
-
-        except Exception as exc:
-
-            print()
-            print("=" * 60)
-            print(
-                "DAILY REFRESH FAILED"
-            )
-            print("=" * 60)
-
-            print()
-            print(
-                f"Failed component: "
-                f"{name}"
-            )
-
-            print(
-                f"Error: "
-                f"{exc}"
-            )
-
-            print()
-            print(
-                "Successfully completed:"
-            )
-
-            if completed:
-
-                for item in completed:
-                    print(
-                        f"  ✓ {item}"
-                    )
-
-            else:
-
-                print(
-                    "  None"
-                )
-
-            raise
-
-    # =========================================================
+    # ---------------------------------------------------------
     # COMPLETE
-    # =========================================================
+    # ---------------------------------------------------------
 
     completed_at = datetime.now(
         timezone.utc
     )
 
     print()
-    print("=" * 60)
+
+    print(
+        "=" * 72
+    )
+
     print(
         "DAILY REFRESH COMPLETE"
     )
-    print("=" * 60)
 
-    print()
     print(
-        "✓ Indicator catalog"
+        "=" * 72
     )
 
-    for name in completed:
-        print(
-            f"✓ {name}"
-        )
+    print()
+
+    print(
+        "Providers refreshed: "
+        f"{result.provider_count}"
+    )
+
+    print(
+        "Catalog series refreshed: "
+        f"{result.series_count}"
+    )
+
+    print(
+        "Observations inserted: "
+        f"{result.inserted}"
+    )
+
+    print(
+        "Observations skipped: "
+        f"{result.skipped}"
+    )
 
     print()
+
     print(
         "Completed: "
         f"{completed_at.isoformat()}"

@@ -1,136 +1,51 @@
-from decimal import Decimal
+from __future__ import annotations
 
-from sqlalchemy import select
-
-from backend.collectors.nyfed_rrp import (
-    fetch_latest_reverse_repo,
+from backend.database.seed import (
+    seed_database,
 )
-from backend.database.connection import get_session
-from backend.database.models import (
-    Indicator,
-    Observation,
+from backend.services.provider_refresh import (
+    refresh_nyfed_reverse_repo,
 )
 
 
-INDICATOR_SYMBOL = "on_rrp"
-
-
-def load_reverse_repo(
-    observation_count: int = 400,
-) -> None:
+def main() -> None:
     """
-    Fetch recent New York Fed ON RRP observations
-    and persist new dates to SQLite.
-
-    Values are stored in USD billions.
+    Refresh catalog-defined New York Fed
+    overnight reverse-repo data.
     """
 
-    observations = fetch_latest_reverse_repo(
-        observation_count
+    print()
+
+    print(
+        "Liquidity Monitor — "
+        "ON RRP Refresh"
     )
 
-    if not observations:
-        raise RuntimeError(
-            "No ON RRP observations returned."
-        )
+    print(
+        "=" * 72
+    )
 
-    with get_session() as session:
 
-        indicator = session.scalar(
-            select(Indicator).where(
-                Indicator.symbol
-                == INDICATOR_SYMBOL
-            )
-        )
+    seed_database()
 
-        if indicator is None:
-            raise RuntimeError(
-                "ON RRP indicator not found. "
-                "Run the database seed first."
-            )
 
-        existing_dates = set(
-            session.scalars(
-                select(
-                    Observation.observation_date
-                ).where(
-                    Observation.indicator_id
-                    == indicator.id
-                )
-            ).all()
-        )
-
-        inserted = 0
-        skipped = 0
-
-        for item in observations:
-
-            if (
-                item.operation_date
-                in existing_dates
-            ):
-                skipped += 1
-                continue
-
-            value_billions = (
-                item.total_accepted_dollars
-                / Decimal("1000000000")
-            )
-
-            observation = Observation(
-                indicator_id=indicator.id,
-                observation_date=item.operation_date,
-                value=value_billions,
-            )
-
-            session.add(observation)
-
-            existing_dates.add(
-                item.operation_date
-            )
-
-            inserted += 1
-
-        session.commit()
+    refresh_nyfed_reverse_repo(
+        observation_count=
+            400
+    )
 
 
     print()
-    print("ON RRP Ingestion")
-    print("================================")
 
     print(
-        f"Fetched:       "
-        f"{len(observations)}"
+        "=" * 72
     )
 
     print(
-        f"Inserted:      "
-        f"{inserted}"
-    )
-
-    print(
-        f"Skipped:       "
-        f"{skipped}"
-    )
-
-    latest = observations[0]
-
-    latest_billions = (
-        latest.total_accepted_dollars
-        / Decimal("1000000000")
-    )
-
-    print()
-    print(
-        f"Latest Date:   "
-        f"{latest.operation_date}"
-    )
-
-    print(
-        f"Latest ON RRP: "
-        f"${latest_billions:,.3f} billion"
+        "ON RRP refresh complete."
     )
 
 
 if __name__ == "__main__":
-    load_reverse_repo()
+
+    main()
