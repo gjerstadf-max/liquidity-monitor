@@ -1,24 +1,14 @@
 from __future__ import annotations
 
-from backend.assessments.funding import (
-    assess_funding,
-)
 
 from backend.assessments.models import (
     Assessment,
+    FactorAssessment,
     LiquidityAssessment,
 )
 
-from backend.assessments.repo_market import (
-    assess_repo_market,
-)
-
-from backend.assessments.system_liquidity import (
-    assess_system_liquidity,
-)
-
-from backend.assessments.treasury_intermediation import (
-    assess_treasury_intermediation,
+from backend.assessments.registry import (
+    FACTOR_REGISTRY,
 )
 
 
@@ -312,41 +302,41 @@ def _overall_summary(
 def build_liquidity_assessment(
 ) -> LiquidityAssessment:
     """
-    Build the Liquidity Monitor's four-factor
-    qualitative assessment.
+    Build the Liquidity Monitor qualitative assessment
+    from all registered factors.
 
-    Current factors:
+    Factor registration is generic.
 
-    1. Funding Conditions
-    2. System Liquidity
-    3. Repo Market Pressure
-    4. Treasury Intermediation
-
-    No weighted composite score is used.
+    Individual factor economics and overall narrative
+    interpretation remain explicit.
     """
 
-    funding = (
-        assess_funding()
-    )
+    factor_results = tuple(
+        FactorAssessment(
+            key=
+                definition.key,
 
-    system_liquidity = (
-        assess_system_liquidity()
-    )
+            assessment=
+                definition.assessor(),
+        )
 
-    repo_market = (
-        assess_repo_market()
-    )
-
-    treasury_intermediation = (
-        assess_treasury_intermediation()
+        for definition
+        in FACTOR_REGISTRY
     )
 
     assessments = [
-        funding,
-        system_liquidity,
-        repo_market,
-        treasury_intermediation,
+        item.assessment
+        for item
+        in factor_results
     ]
+
+    factors_by_key = {
+        item.key:
+            item.assessment
+
+        for item
+        in factor_results
+    }
 
     overall_verdict = (
         _overall_verdict(
@@ -360,22 +350,40 @@ def build_liquidity_assessment(
         )
     )
 
+    # ---------------------------------------------------------
+    # EXPLICIT ECONOMIC SUMMARY
+    # ---------------------------------------------------------
+    #
+    # The overall narrative still intentionally understands
+    # the economic roles of the existing factors.
+    #
+    # We are not turning this into a generic scoring engine.
+    # ---------------------------------------------------------
+
     summary = (
         _overall_summary(
             overall_verdict=
                 overall_verdict,
 
             funding=
-                funding,
+                factors_by_key[
+                    "funding"
+                ],
 
             system_liquidity=
-                system_liquidity,
+                factors_by_key[
+                    "system_liquidity"
+                ],
 
             repo_market=
-                repo_market,
+                factors_by_key[
+                    "repo_market"
+                ],
 
             treasury_intermediation=
-                treasury_intermediation,
+                factors_by_key[
+                    "treasury_intermediation"
+                ],
         )
     )
 
@@ -386,22 +394,12 @@ def build_liquidity_assessment(
         confidence=
             confidence,
 
-        funding=
-            funding,
-
-        system_liquidity=
-            system_liquidity,
-
-        repo_market=
-            repo_market,
-
-        treasury_intermediation=
-            treasury_intermediation,
+        factors=
+            factor_results,
 
         summary=
             summary,
     )
-
 
 # =============================================================
 # TERMINAL DISPLAY
