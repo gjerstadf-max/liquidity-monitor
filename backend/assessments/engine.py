@@ -7,7 +7,7 @@ from backend.assessments.models import (
     LiquidityAssessment,
 )
 
-from backend.assessments.registry import (
+from backend.factors.registry import (
     FACTOR_REGISTRY,
 )
 
