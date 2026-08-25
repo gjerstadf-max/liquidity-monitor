@@ -125,6 +125,27 @@ def build_morning_brief(
             what_to_watch,
     )
 
+# =============================================================
+# GENERATE MORNING BRIEF
+# =============================================================
+
+
+def generate_morning_brief(
+    assessment: LiquidityAssessment | None = None,
+) -> MorningBrief:
+    """
+    Backward-compatible public interface for generating
+    the Liquidity Monitor Morning Brief.
+
+    Existing services may continue importing
+    generate_morning_brief().
+    """
+
+    return build_morning_brief(
+        assessment=
+            assessment
+    )
+
 
 # =============================================================
 # TERMINAL DISPLAY
