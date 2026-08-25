@@ -475,24 +475,10 @@ def run_assessment() -> None:
 
     print()
 
-    print(
-        assessment.summary
-    )
+    for factor in assessment.factors:
 
-    _print_assessment(
-        assessment.funding
-    )
-
-    _print_assessment(
-        assessment.system_liquidity
-    )
-
-    _print_assessment(
-        assessment.repo_market
-    )
-
-    _print_assessment(
-        assessment.treasury_intermediation
+        _print_assessment(
+           factor.assessment
     )
 
 

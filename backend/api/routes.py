@@ -51,15 +51,6 @@ def get_snapshot():
         include_news=True
     )
 
-    system_assessment = (
-        snapshot.assessment.system_liquidity
-    )
-
-    if system_assessment is None:
-        raise RuntimeError(
-            "System Liquidity assessment is missing."
-        )
-
     return {
         # -----------------------------------------------------
         # GENERATED
