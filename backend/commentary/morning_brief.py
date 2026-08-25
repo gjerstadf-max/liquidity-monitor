@@ -6,7 +6,6 @@ from decimal import Decimal
 from backend.assessments.engine import (
     build_liquidity_assessment,
 )
-
 from backend.assessments.models import (
     LiquidityAssessment,
 )
@@ -14,16 +13,13 @@ from backend.metrics.funding import (
     funding_spread_statistics,
     latest_funding_snapshot,
 )
-
 from backend.metrics.repo_market import (
     repo_market_statistics,
 )
-
 from backend.metrics.system_liquidity import (
     system_liquidity_history_metrics,
     system_liquidity_metrics,
 )
-
 from backend.metrics.treasury_intermediation import (
     treasury_intermediation_statistics,
 )
@@ -51,7 +47,6 @@ def _format_billions(
     value: Decimal | float,
     decimals: int = 0,
 ) -> str:
-
     numeric = float(
         value
     )
@@ -65,11 +60,11 @@ def _format_billions(
         f"${numeric:,.{decimals}f}B"
     )
 
+
 def _format_bp(
     value: Decimal | float,
     decimals: int = 0,
 ) -> str:
-
     return (
         f"{float(value):+,.{decimals}f} bp"
     )
@@ -78,7 +73,6 @@ def _format_bp(
 def _format_sigma(
     value: float,
 ) -> str:
-
     return (
         f"{value:+.2f}σ"
     )
@@ -92,7 +86,6 @@ def _format_sigma(
 def _headline(
     verdict: str,
 ) -> str:
-
     headlines = {
         "Normal":
             "Liquidity conditions remain broadly normal.",
@@ -119,7 +112,6 @@ def _headline(
 
 
 def _funding_what_matters() -> str:
-
     snapshot = (
         latest_funding_snapshot()
     )
@@ -140,12 +132,16 @@ def _funding_what_matters() -> str:
         f"{_format_sigma(stats.zscore_60d)}."
     )
 
+
 # =============================================================
 # WHAT MATTERS — SYSTEM LIQUIDITY
 # =============================================================
 
 
 def _system_liquidity_what_matters() -> str:
+    current = (
+        system_liquidity_metrics()
+    )
 
     history = (
         system_liquidity_history_metrics()
@@ -166,29 +162,6 @@ def _system_liquidity_what_matters() -> str:
         f"of the trailing 52-week range."
     )
 
-    current = (
-        system_liquidity_metrics()
-    )
-
-    history = (
-        system_liquidity_history_metrics()
-    )
-
-    return (
-        "System liquidity: "
-        f"the monitoring proxy "
-        f"(reserve balances + ON RRP − TGA) stands at "
-        f"{_format_billions(current.net_liquidity_billions)}. "
-        f"It has changed "
-        f"{_format_billions(history.change_4w_billions)} "
-        f"over four weeks and "
-        f"{_format_billions(history.change_13w_billions)} "
-        f"over thirteen weeks. "
-        f"The current level is near the "
-        f"{history.percentile_52w:.0f}th percentile "
-        f"of the trailing 52-week range."
-    )
-
 
 # =============================================================
 # WHAT MATTERS — REPO MARKET
@@ -196,7 +169,6 @@ def _system_liquidity_what_matters() -> str:
 
 
 def _repo_what_matters() -> str:
-
     stats = (
         repo_market_statistics(
             lookback=60
@@ -224,7 +196,6 @@ def _repo_what_matters() -> str:
 
 
 def _treasury_intermediation_what_matters() -> str:
-
     stats = (
         treasury_intermediation_statistics()
     )
@@ -252,7 +223,6 @@ def _treasury_intermediation_what_matters() -> str:
 def _funding_watch(
     verdict: str,
 ) -> str:
-
     if verdict == "Normal":
         return (
             "Funding: overnight secured and unsecured rates "
@@ -292,7 +262,6 @@ def _funding_watch(
 def _system_liquidity_watch(
     verdict: str,
 ) -> str:
-
     metrics = (
         system_liquidity_metrics()
     )
@@ -355,7 +324,6 @@ def _system_liquidity_watch(
 def _repo_watch(
     verdict: str,
 ) -> str:
-
     if verdict == "Normal":
         return (
             "Repo market: secured funding remains orderly. "
@@ -396,7 +364,6 @@ def _repo_watch(
 def _treasury_intermediation_watch(
     verdict: str,
 ) -> str:
-
     if verdict == "Normal":
         return (
             "Treasury intermediation: dealer balance-sheet "
@@ -431,6 +398,8 @@ def _treasury_intermediation_watch(
         "market functioning begins to normalize or whether "
         "the disruption persists across multiple weeks."
     )
+
+
 # =============================================================
 # FACTOR COMMENTARY REGISTRY
 # =============================================================
@@ -441,19 +410,23 @@ MORNING_BRIEF_FACTORS = {
         _funding_what_matters,
         _funding_watch,
     ),
+
     "system_liquidity": (
         _system_liquidity_what_matters,
         _system_liquidity_watch,
     ),
+
     "repo_market": (
         _repo_what_matters,
         _repo_watch,
     ),
+
     "treasury_intermediation": (
         _treasury_intermediation_what_matters,
         _treasury_intermediation_watch,
     ),
 }
+
 
 # =============================================================
 # BUILD MORNING BRIEF
@@ -468,6 +441,12 @@ def build_morning_brief(
 
     If an assessment is supplied, reuse it.
     Otherwise build the current assessment.
+
+    Factor ordering comes from the central assessment
+    factor registry through assessment.factors.
+
+    Factor-specific economic commentary remains explicit
+    in this module.
     """
 
     if assessment is None:
@@ -478,37 +457,35 @@ def build_morning_brief(
     what_matters: list[str] = []
     what_to_watch: list[str] = []
 
-
     for factor in assessment.factors:
 
         commentary = (
             MORNING_BRIEF_FACTORS.get(
                 factor.key
-        )
-    )
-
-    if commentary is None:
-
-        raise RuntimeError(
-            "No Morning Brief commentary "
-            "registered for factor: "
-            f"{factor.key}"
+            )
         )
 
-    (
-        what_matters_builder,
-        watch_builder,
-    ) = commentary
+        if commentary is None:
+            raise RuntimeError(
+                "No Morning Brief commentary "
+                "registered for factor: "
+                f"{factor.key}"
+            )
 
-    what_matters.append(
-        what_matters_builder()
-    )
+        (
+            what_matters_builder,
+            watch_builder,
+        ) = commentary
 
-    what_to_watch.append(
-        watch_builder(
-            factor.assessment.verdict
+        what_matters.append(
+            what_matters_builder()
         )
-    )
+
+        what_to_watch.append(
+            watch_builder(
+                factor.assessment.verdict
+            )
+        )
 
     return MorningBrief(
         headline=
@@ -527,20 +504,16 @@ def build_morning_brief(
     )
 
 
-
-
 # =============================================================
 # TERMINAL DISPLAY
 # =============================================================
 
 
-def print_morning_brief() -> None:
-
-    brief = (
-        build_morning_brief()
-    )
-
+def print_morning_brief(
+    brief: MorningBrief,
+) -> None:
     print()
+
     print(
         "LIQUIDITY MONITOR — MORNING BRIEF"
     )
@@ -550,16 +523,19 @@ def print_morning_brief() -> None:
     )
 
     print()
+
     print(
         brief.headline
     )
 
     print()
+
     print(
         brief.summary
     )
 
     print()
+
     print(
         "WHAT MATTERS"
     )
@@ -568,13 +544,16 @@ def print_morning_brief() -> None:
         "-" * 80
     )
 
+    print()
+
     for item in brief.what_matters:
-        print()
+
         print(
             f"• {item}"
         )
 
-    print()
+        print()
+
     print(
         "WHAT TO WATCH"
     )
@@ -583,28 +562,41 @@ def print_morning_brief() -> None:
         "-" * 80
     )
 
+    print()
+
     for item in brief.what_to_watch:
-        print()
+
         print(
             f"• {item}"
         )
 
+        print()
+
+
 # =============================================================
-# BACKWARD-COMPATIBLE PUBLIC API
+# RUN
 # =============================================================
 
 
-def generate_morning_brief(
+def run_morning_brief(
     assessment: LiquidityAssessment | None = None,
-) -> MorningBrief:
-    """
-    Backward-compatible public entry point used
-    by backend.services.daily_snapshot.
-    """
-
-    return build_morning_brief(
-        assessment=assessment
+) -> None:
+    brief = (
+        build_morning_brief(
+            assessment=
+                assessment
+        )
     )
 
+    print_morning_brief(
+        brief
+    )
+
+
+# =============================================================
+# DIRECT EXECUTION
+# =============================================================
+
+
 if __name__ == "__main__":
-    print_morning_brief()
+    run_morning_brief()
