@@ -118,6 +118,27 @@ def daily_refresh() -> None:
         "Observations inserted: "
         f"{result.inserted}"
     )
+    print()
+
+    print(
+        "Structured datasets refreshed: "
+        f"{result.structured_dataset_count}"
+    )
+
+    print(
+        "Structured records inserted: "
+        f"{result.structured_inserted}"
+    )
+
+    print(
+        "Structured records updated: "
+        f"{result.structured_updated}"
+    )
+
+    print(
+        "Structured records skipped: "
+        f"{result.structured_skipped}"
+    )
 
     print(
         "Observations skipped: "

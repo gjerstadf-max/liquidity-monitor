@@ -270,3 +270,293 @@ class NewsSnapshot(Base):
         default=utc_now,
         onupdate=utc_now,
     )
+
+# =============================================================
+# TREASURY AUCTIONS
+# =============================================================
+
+
+class TreasuryAuctionRecord(Base):
+    """
+    One Treasury auction record from Treasury FiscalData.
+
+    Unlike ordinary Indicator/Observation time series,
+    auctions are structured records with an announcement
+    lifecycle:
+
+        announcement
+            ↓
+        auction
+            ↓
+        settlement / issue
+
+    The same CUSIP may be reopened, so CUSIP alone is not
+    unique. CUSIP + auction date identifies one auction.
+    """
+
+    __tablename__ = "treasury_auctions"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "cusip",
+            "auction_date",
+            name="uq_treasury_auction_cusip_date",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(
+        primary_key=True
+    )
+
+    # ---------------------------------------------------------
+    # IDENTIFICATION
+    # ---------------------------------------------------------
+
+    cusip: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        index=True,
+    )
+
+    record_date: Mapped[date] = mapped_column(
+        Date,
+        nullable=False,
+    )
+
+    security_type: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+
+    security_term: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+
+    # ---------------------------------------------------------
+    # DATES
+    # ---------------------------------------------------------
+
+    announcement_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+        index=True,
+    )
+
+    auction_date: Mapped[date] = mapped_column(
+        Date,
+        nullable=False,
+        index=True,
+    )
+
+    issue_date: Mapped[date] = mapped_column(
+        Date,
+        nullable=False,
+        index=True,
+    )
+
+    maturity_date: Mapped[date] = mapped_column(
+        Date,
+        nullable=False,
+    )
+
+    # ---------------------------------------------------------
+    # SECURITY CHARACTERISTICS
+    # ---------------------------------------------------------
+
+    reopening: Mapped[bool | None] = mapped_column(
+        Boolean,
+        nullable=True,
+    )
+
+    cash_management_bill: Mapped[bool | None] = mapped_column(
+        Boolean,
+        nullable=True,
+    )
+
+    # ---------------------------------------------------------
+    # SUPPLY
+    # ---------------------------------------------------------
+
+    offering_amount_dollars: Mapped[
+        Decimal | None
+    ] = mapped_column(
+        Numeric(24, 4),
+        nullable=True,
+    )
+
+    currently_outstanding_dollars: Mapped[
+        Decimal | None
+    ] = mapped_column(
+        Numeric(24, 4),
+        nullable=True,
+    )
+
+    estimated_public_maturing_dollars: Mapped[
+        Decimal | None
+    ] = mapped_column(
+        Numeric(24, 4),
+        nullable=True,
+    )
+
+    # ---------------------------------------------------------
+    # AUCTION DEMAND
+    # ---------------------------------------------------------
+
+    competitive_tendered_dollars: Mapped[
+        Decimal | None
+    ] = mapped_column(
+        Numeric(24, 4),
+        nullable=True,
+    )
+
+    competitive_accepted_dollars: Mapped[
+        Decimal | None
+    ] = mapped_column(
+        Numeric(24, 4),
+        nullable=True,
+    )
+
+    noncompetitive_accepted_dollars: Mapped[
+        Decimal | None
+    ] = mapped_column(
+        Numeric(24, 4),
+        nullable=True,
+    )
+
+    fima_tendered_dollars: Mapped[
+        Decimal | None
+    ] = mapped_column(
+        Numeric(24, 4),
+        nullable=True,
+    )
+
+    fima_accepted_dollars: Mapped[
+        Decimal | None
+    ] = mapped_column(
+        Numeric(24, 4),
+        nullable=True,
+    )
+
+    soma_tendered_dollars: Mapped[
+        Decimal | None
+    ] = mapped_column(
+        Numeric(24, 4),
+        nullable=True,
+    )
+
+    soma_accepted_dollars: Mapped[
+        Decimal | None
+    ] = mapped_column(
+        Numeric(24, 4),
+        nullable=True,
+    )
+
+    total_tendered_dollars: Mapped[
+        Decimal | None
+    ] = mapped_column(
+        Numeric(24, 4),
+        nullable=True,
+    )
+
+    total_accepted_dollars: Mapped[
+        Decimal | None
+    ] = mapped_column(
+        Numeric(24, 4),
+        nullable=True,
+    )
+
+    # ---------------------------------------------------------
+    # BIDDER DISTRIBUTION
+    # ---------------------------------------------------------
+
+    primary_dealer_tendered_dollars: Mapped[
+        Decimal | None
+    ] = mapped_column(
+        Numeric(24, 4),
+        nullable=True,
+    )
+
+    primary_dealer_accepted_dollars: Mapped[
+        Decimal | None
+    ] = mapped_column(
+        Numeric(24, 4),
+        nullable=True,
+    )
+
+    indirect_bidder_tendered_dollars: Mapped[
+        Decimal | None
+    ] = mapped_column(
+        Numeric(24, 4),
+        nullable=True,
+    )
+
+    indirect_bidder_accepted_dollars: Mapped[
+        Decimal | None
+    ] = mapped_column(
+        Numeric(24, 4),
+        nullable=True,
+    )
+
+    direct_bidder_tendered_dollars: Mapped[
+        Decimal | None
+    ] = mapped_column(
+        Numeric(24, 4),
+        nullable=True,
+    )
+
+    direct_bidder_accepted_dollars: Mapped[
+        Decimal | None
+    ] = mapped_column(
+        Numeric(24, 4),
+        nullable=True,
+    )
+
+    treasury_retail_accepted_dollars: Mapped[
+        Decimal | None
+    ] = mapped_column(
+        Numeric(24, 4),
+        nullable=True,
+    )
+
+    # ---------------------------------------------------------
+    # PRICING
+    # ---------------------------------------------------------
+
+    bid_to_cover_ratio: Mapped[
+        Decimal | None
+    ] = mapped_column(
+        Numeric(12, 6),
+        nullable=True,
+    )
+
+    high_investment_rate: Mapped[
+        Decimal | None
+    ] = mapped_column(
+        Numeric(12, 6),
+        nullable=True,
+    )
+
+    # ---------------------------------------------------------
+    # AUDIT
+    # ---------------------------------------------------------
+
+    retrieved_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+    )
+    
