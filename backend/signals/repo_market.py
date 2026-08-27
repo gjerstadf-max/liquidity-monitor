@@ -3,8 +3,10 @@ from __future__ import annotations
 from datetime import date
 
 from backend.metrics.repo_market import (
+    FedRepoOperationsStatistics,
     RepoMetricContext,
     RepoMarketStatistics,
+    fed_repo_operations_statistics,
     repo_market_statistics,
 )
 from backend.signals.models import Signal
@@ -53,6 +55,36 @@ ECONOMIC_THRESHOLDS = {
         "strong": 100.0,
     },
 }
+
+
+# =============================================================
+# FED REPO SUPPORT THRESHOLDS
+# =============================================================
+#
+# Federal Reserve repo operations are supporting diagnostics.
+#
+# Historical testing showed:
+#
+#   < $5B
+#       No confirmation
+#
+#   >= $5B
+#       Watch-level confirmation
+#
+#   >= $10B
+#       Severity-level confirmation
+#
+#   >= $25B
+#       Exceptional usage for narrative emphasis
+#
+# Fed repo operations never independently create a Warning
+# or Critical signal.
+# =============================================================
+
+
+FED_REPO_WATCH_BILLIONS = 5.0
+FED_REPO_SEVERITY_BILLIONS = 10.0
+FED_REPO_EXCEPTIONAL_BILLIONS = 25.0
 
 
 # =============================================================
@@ -176,7 +208,6 @@ def _qualified_elevated(
             )
         )
 
-
     return (
         statistically_unusual
         and
@@ -209,7 +240,6 @@ def _qualified_strong(
             )
         )
 
-
     return (
         statistically_strong
         and
@@ -233,7 +263,6 @@ def _statistically_elevated(
             )
         )
 
-
     return (
         _dispersion_statistically_elevated(
             metric
@@ -256,12 +285,66 @@ def _format_bp(
 
 
 # =============================================================
+# FED REPO NARRATIVE
+# =============================================================
+
+
+def _fed_repo_text(
+    fed_repo_usage: float,
+) -> str:
+    """
+    Produce supporting narrative for Federal Reserve
+    repo-operation usage.
+
+    Wording is deliberately neutral because use of the
+    Fed backstop can help absorb pressure and maintain
+    orderly market functioning.
+    """
+
+    if (
+        fed_repo_usage
+        >= FED_REPO_EXCEPTIONAL_BILLIONS
+    ):
+
+        return (
+            f" Federal Reserve repo operations were "
+            f"${fed_repo_usage:,.1f}B, an exceptionally "
+            f"large use of the Fed repo backstop."
+        )
+
+    if (
+        fed_repo_usage
+        >= FED_REPO_SEVERITY_BILLIONS
+    ):
+
+        return (
+            f" Federal Reserve repo operations were "
+            f"${fed_repo_usage:,.1f}B, a meaningful use "
+            f"of the Fed repo backstop."
+        )
+
+    if (
+        fed_repo_usage
+        >= FED_REPO_WATCH_BILLIONS
+    ):
+
+        return (
+            f" Federal Reserve repo operations were "
+            f"${fed_repo_usage:,.1f}B, a notable "
+            f"supporting sign of financing demand."
+        )
+
+    return ""
+
+
+# =============================================================
 # CORE SIGNAL LOGIC
 # =============================================================
 
 
 def evaluate_repo_market_statistics(
     stats: RepoMarketStatistics,
+    fed_repo: FedRepoOperationsStatistics | None = None,
 ) -> Signal:
     """
     Repo Signal V2.
@@ -273,6 +356,13 @@ def evaluate_repo_market_statistics(
     Warning / Critical:
         Require statistical abnormality AND
         economically meaningful absolute magnitude.
+
+    Federal Reserve repo operations:
+        Supporting confirmation only.
+
+        Fed repo activity can increase Watch or
+        severity support counts, but cannot by itself
+        generate Warning or Critical.
 
     Both live monitoring and historical replay use
     this exact function.
@@ -306,7 +396,6 @@ def evaluate_repo_market_statistics(
         ),
     }
 
-
     # =========================================================
     # CLASSIFY PRIMARY DIAGNOSTICS
     # =========================================================
@@ -316,7 +405,6 @@ def evaluate_repo_market_statistics(
     meaningful_elevated: list[str] = []
 
     meaningful_strong: list[str] = []
-
 
     for (
         name,
@@ -335,7 +423,6 @@ def evaluate_repo_market_statistics(
                 name
             )
 
-
         if _qualified_elevated(
             name,
             metric,
@@ -346,7 +433,6 @@ def evaluate_repo_market_statistics(
                 name
             )
 
-
         if _qualified_strong(
             name,
             metric,
@@ -356,7 +442,6 @@ def evaluate_repo_market_statistics(
             meaningful_strong.append(
                 name
             )
-
 
     statistical_count = len(
         statistical_elevated
@@ -370,7 +455,6 @@ def evaluate_repo_market_statistics(
         meaningful_strong
     )
 
-
     # =========================================================
     # SUPPORTING DIAGNOSTICS
     # =========================================================
@@ -381,15 +465,17 @@ def evaluate_repo_market_statistics(
     #
     # Volume is also supporting only. High volume by itself
     # is not evidence of funding stress.
+    #
+    # Federal Reserve repo operations are also supporting.
+    # They indicate use of the Fed backstop but do not
+    # independently establish market dysfunction.
     # =========================================================
-
 
     sofr_effr_statistical = (
         _spread_statistically_elevated(
             stats.sofr_effr
         )
     )
-
 
     sofr_effr_meaningful = (
         sofr_effr_statistical
@@ -399,17 +485,39 @@ def evaluate_repo_market_statistics(
         ) >= 10.0
     )
 
-
     volume_unusual = (
         stats.sofr_volume.zscore_60d
         >= 1.5
-
         or
-
         stats.sofr_volume.percentile_60d
         >= 90
     )
 
+    # ---------------------------------------------------------
+    # FED REPO OPERATIONS
+    # ---------------------------------------------------------
+
+    fed_repo_usage = 0.0
+
+    if fed_repo is not None:
+
+        fed_repo_usage = float(
+            fed_repo.current_billions
+        )
+
+    fed_repo_watch_support = (
+        fed_repo_usage
+        >= FED_REPO_WATCH_BILLIONS
+    )
+
+    fed_repo_severity_support = (
+        fed_repo_usage
+        >= FED_REPO_SEVERITY_BILLIONS
+    )
+
+    # ---------------------------------------------------------
+    # SUPPORT COUNTS
+    # ---------------------------------------------------------
 
     watch_support_count = (
         int(
@@ -419,8 +527,11 @@ def evaluate_repo_market_statistics(
         int(
             volume_unusual
         )
+        +
+        int(
+            fed_repo_watch_support
+        )
     )
-
 
     severity_support_count = (
         int(
@@ -430,13 +541,15 @@ def evaluate_repo_market_statistics(
         int(
             volume_unusual
         )
+        +
+        int(
+            fed_repo_severity_support
+        )
     )
-
 
     # =========================================================
     # COMMON DIAGNOSTIC TEXT
     # =========================================================
-
 
     diagnostic_text = (
         f"SOFR-OBFR is "
@@ -449,23 +562,28 @@ def evaluate_repo_market_statistics(
         f"{float(stats.sofr_upper_tail.current):.1f} bp."
     )
 
+    fed_repo_text = (
+        _fed_repo_text(
+            fed_repo_usage
+        )
+    )
 
     # =========================================================
     # CRITICAL
     # =========================================================
     #
     # Critical requires several economically large,
-    # statistically extreme diagnostics.
+    # statistically extreme primary diagnostics.
     #
-    # This is intentionally difficult to reach.
+    # Fed repo activity can reinforce the narrative but
+    # cannot independently create Critical.
+    #
+    # This remains intentionally difficult to reach.
     # =========================================================
-
 
     if (
         strong_count >= 3
-
         or
-
         (
             strong_count >= 2
             and
@@ -474,7 +592,6 @@ def evaluate_repo_market_statistics(
     ):
 
         return Signal(
-
             category=
                 "Repo Market",
 
@@ -485,7 +602,8 @@ def evaluate_repo_market_statistics(
                 "Critical",
 
             message=(
-                f"{diagnostic_text} "
+                f"{diagnostic_text}"
+                f"{fed_repo_text} "
                 f"{meaningful_count} of 5 primary "
                 "repo diagnostics are both statistically "
                 "unusual and economically meaningful, "
@@ -496,28 +614,24 @@ def evaluate_repo_market_statistics(
             ),
         )
 
-
     # =========================================================
     # WARNING
     # =========================================================
     #
     # Warning requires meaningful magnitude.
     #
-    # Two severe diagnostics are sufficient.
+    # Two severe primary diagnostics are sufficient.
     #
-    # Otherwise we require broader confirmation.
+    # Otherwise broader confirmation is required.
+    # Federal Reserve repo usage can contribute one
+    # supporting confirmation vote.
     # =========================================================
-
 
     if (
         strong_count >= 2
-
         or
-
         meaningful_count >= 4
-
         or
-
         (
             meaningful_count >= 3
             and
@@ -526,7 +640,6 @@ def evaluate_repo_market_statistics(
     ):
 
         return Signal(
-
             category=
                 "Repo Market",
 
@@ -537,7 +650,8 @@ def evaluate_repo_market_statistics(
                 "Warning",
 
             message=(
-                f"{diagnostic_text} "
+                f"{diagnostic_text}"
+                f"{fed_repo_text} "
                 f"{meaningful_count} of 5 primary "
                 "repo diagnostics are both statistically "
                 "unusual and economically meaningful, "
@@ -546,7 +660,6 @@ def evaluate_repo_market_statistics(
                 "multiple secured-funding measures."
             ),
         )
-
 
     # =========================================================
     # WATCH
@@ -557,14 +670,15 @@ def evaluate_repo_market_statistics(
     # Statistical abnormalities can trigger monitoring
     # even when absolute magnitude is not yet large enough
     # for Warning.
+    #
+    # Fed repo operations >= $5B can provide supporting
+    # confirmation when at least one primary diagnostic
+    # is already statistically unusual.
     # =========================================================
-
 
     if (
         statistical_count >= 2
-
         or
-
         (
             statistical_count >= 1
             and
@@ -573,7 +687,6 @@ def evaluate_repo_market_statistics(
     ):
 
         return Signal(
-
             category=
                 "Repo Market",
 
@@ -584,7 +697,8 @@ def evaluate_repo_market_statistics(
                 "Watch",
 
             message=(
-                f"{diagnostic_text} "
+                f"{diagnostic_text}"
+                f"{fed_repo_text} "
                 f"{statistical_count} of 5 primary "
                 "repo diagnostics are unusual relative "
                 "to recent history, but only "
@@ -594,16 +708,13 @@ def evaluate_repo_market_statistics(
             ),
         )
 
-
     # =========================================================
     # ISOLATED ABNORMALITY
     # =========================================================
 
-
     if statistical_count == 1:
 
         return Signal(
-
             category=
                 "Repo Market",
 
@@ -614,7 +725,8 @@ def evaluate_repo_market_statistics(
                 "Normal",
 
             message=(
-                f"{diagnostic_text} "
+                f"{diagnostic_text}"
+                f"{fed_repo_text} "
                 "One repo diagnostic is statistically "
                 "unusual, but the broader secured-funding "
                 "market does not confirm meaningful "
@@ -622,14 +734,11 @@ def evaluate_repo_market_statistics(
             ),
         )
 
-
     # =========================================================
     # NORMAL
     # =========================================================
 
-
     return Signal(
-
         category=
             "Repo Market",
 
@@ -640,7 +749,8 @@ def evaluate_repo_market_statistics(
             "Normal",
 
         message=(
-            f"{diagnostic_text} "
+            f"{diagnostic_text}"
+            f"{fed_repo_text} "
             "Secured-funding spreads, transaction "
             "dispersion, and upper-tail pricing do not "
             "show broad evidence of repo-market pressure."
@@ -665,10 +775,19 @@ def evaluate_repo_market_signal(
         )
     )
 
+    fed_repo = (
+        fed_repo_operations_statistics(
+            lookback=60,
+            as_of_date=
+                as_of_date,
+        )
+    )
 
     return (
         evaluate_repo_market_statistics(
-            stats
+            stats,
+            fed_repo=
+                fed_repo,
         )
     )
 
@@ -684,8 +803,8 @@ if __name__ == "__main__":
         evaluate_repo_market_signal()
     )
 
-
     print()
+
     print(
         "Liquidity Monitor — "
         "Repo Market Signal"
