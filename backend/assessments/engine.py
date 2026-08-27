@@ -30,11 +30,13 @@ def _overall_verdict(
     - Two or more Stressed factors:
         Stressed
 
-    - One Stressed factor plus any other
-      Elevated or Watch factor:
+    - One Stressed factor plus any Elevated factor:
         Stressed
 
-    - One isolated Stressed factor:
+    - One Stressed factor plus two or more Watch factors:
+        Stressed
+
+    - One Stressed factor without sufficient confirmation:
         Elevated
 
     - Any Elevated factor:
@@ -45,6 +47,10 @@ def _overall_verdict(
 
     - Otherwise:
         Normal
+
+    This structure intentionally requires meaningful
+    confirmation before one stressed component causes the
+    entire liquidity framework to be classified Stressed.
     """
 
     verdicts = [
@@ -53,22 +59,16 @@ def _overall_verdict(
         in assessments
     ]
 
-    stressed_count = (
-        verdicts.count(
-            "Stressed"
-        )
+    stressed_count = verdicts.count(
+        "Stressed"
     )
 
-    elevated_count = (
-        verdicts.count(
-            "Elevated"
-        )
+    elevated_count = verdicts.count(
+        "Elevated"
     )
 
-    watch_count = (
-        verdicts.count(
-            "Watch"
-        )
+    watch_count = verdicts.count(
+        "Watch"
     )
 
     # ---------------------------------------------------------
@@ -80,13 +80,13 @@ def _overall_verdict(
 
     if (
         stressed_count == 1
-        and
-        (
-            elevated_count
-            +
-            watch_count
-        )
-        >= 1
+        and elevated_count >= 1
+    ):
+        return "Stressed"
+
+    if (
+        stressed_count == 1
+        and watch_count >= 2
     ):
         return "Stressed"
 
@@ -112,7 +112,6 @@ def _overall_verdict(
     # ---------------------------------------------------------
 
     return "Normal"
-
 
 # =============================================================
 # CONFIDENCE
@@ -166,13 +165,17 @@ def _overall_summary(
     system_liquidity: Assessment,
     repo_market: Assessment,
     treasury_intermediation: Assessment,
+    treasury_market_activity: Assessment,
 ) -> str:
     """
     Produce a concise qualitative headline.
 
-    The summary intentionally does not repeat every
-    factor verdict. Individual factor cards provide
-    that detail.
+    The summary intentionally understands the economic
+    roles of the individual factors rather than simply
+    repeating every factor verdict.
+
+    Individual factor cards provide the detailed
+    diagnostics.
     """
 
     # ---------------------------------------------------------
@@ -180,63 +183,126 @@ def _overall_summary(
     # ---------------------------------------------------------
 
     if overall_verdict == "Normal":
+
         return (
             "Liquidity conditions remain broadly normal. "
             "Funding markets, system liquidity, repo-market "
-            "conditions, and Treasury intermediation are not "
+            "conditions, Treasury intermediation, and "
+            "Treasury supply and auction absorption are not "
             "showing material signs of stress."
         )
 
     # ---------------------------------------------------------
     # WATCH
     # ---------------------------------------------------------
-    #
-    # This is an important and common configuration:
-    #
-    # Funding/System Liquidity may become less comfortable
-    # while both market-plumbing factors remain orderly.
-    # ---------------------------------------------------------
 
     if overall_verdict == "Watch":
 
+        # -----------------------------------------------------
+        # LIQUIDITY TIGHTENING
+        #
+        # Funding or available liquidity is becoming less
+        # comfortable while market plumbing and Treasury
+        # activity remain orderly.
+        # -----------------------------------------------------
+
         if (
             repo_market.verdict == "Normal"
-            and
-            treasury_intermediation.verdict == "Normal"
-            and
-            (
+            and treasury_intermediation.verdict == "Normal"
+            and treasury_market_activity.verdict == "Normal"
+            and (
                 funding.verdict != "Normal"
-                or
-                system_liquidity.verdict != "Normal"
+                or system_liquidity.verdict != "Normal"
             )
         ):
+
             return (
                 "Liquidity conditions are becoming less "
-                "comfortable, but secured funding markets "
-                "and Treasury intermediation remain orderly. "
+                "comfortable, but secured funding markets, "
+                "Treasury intermediation, and Treasury "
+                "auction conditions remain orderly. "
                 "The current evidence points to tightening "
                 "liquidity rather than broad market "
                 "dysfunction."
             )
 
+        # -----------------------------------------------------
+        # TREASURY MARKET ACTIVITY ONLY
+        #
+        # This captures heavy supply or somewhat weaker
+        # auction absorption without confirmation from the
+        # broader liquidity framework.
+        # -----------------------------------------------------
+
         if (
             funding.verdict == "Normal"
-            and
-            system_liquidity.verdict == "Normal"
-            and
-            (
-                repo_market.verdict != "Normal"
-                or
-                treasury_intermediation.verdict != "Normal"
+            and system_liquidity.verdict == "Normal"
+            and repo_market.verdict == "Normal"
+            and treasury_intermediation.verdict == "Normal"
+            and treasury_market_activity.verdict != "Normal"
+        ):
+
+            return (
+                "Treasury market activity warrants monitoring, "
+                "but broader liquidity conditions remain "
+                "orderly. Funding, system liquidity, repo "
+                "markets, and Treasury intermediation do not "
+                "currently confirm broader market stress."
+            )
+
+        # -----------------------------------------------------
+        # LIQUIDITY + TREASURY SUPPLY
+        #
+        # A useful configuration for today's environment:
+        # liquidity may be less comfortable while Treasury
+        # issuance is heavy, but repo and dealer plumbing
+        # continue to function normally.
+        # -----------------------------------------------------
+
+        if (
+            repo_market.verdict == "Normal"
+            and treasury_intermediation.verdict == "Normal"
+            and treasury_market_activity.verdict != "Normal"
+            and (
+                funding.verdict != "Normal"
+                or system_liquidity.verdict != "Normal"
             )
         ):
+
+            return (
+                "Liquidity conditions and Treasury market "
+                "activity warrant monitoring, but secured "
+                "funding markets and Treasury intermediation "
+                "remain orderly. Heavy Treasury issuance is "
+                "not currently being accompanied by broader "
+                "market dysfunction."
+            )
+
+        # -----------------------------------------------------
+        # MARKET PLUMBING
+        # -----------------------------------------------------
+
+        if (
+            funding.verdict == "Normal"
+            and system_liquidity.verdict == "Normal"
+            and treasury_market_activity.verdict == "Normal"
+            and (
+                repo_market.verdict != "Normal"
+                or treasury_intermediation.verdict != "Normal"
+            )
+        ):
+
             return (
                 "Market plumbing warrants closer monitoring, "
                 "but the evidence remains isolated. Broader "
-                "funding and system-liquidity conditions do "
-                "not currently confirm material liquidity "
-                "stress."
+                "funding, system-liquidity, and Treasury "
+                "supply conditions do not currently confirm "
+                "material liquidity stress."
             )
+
+        # -----------------------------------------------------
+        # GENERAL WATCH
+        # -----------------------------------------------------
 
         return (
             "Liquidity conditions warrant closer monitoring. "
@@ -244,6 +310,55 @@ def _overall_summary(
             "but the evidence is not broad enough to indicate "
             "material market dysfunction."
         )
+
+    # ---------------------------------------------------------
+    # ELEVATED
+    # ---------------------------------------------------------
+
+    if overall_verdict == "Elevated":
+
+        stressed_count = sum(
+            1
+            for assessment
+            in [
+                funding,
+                system_liquidity,
+                repo_market,
+                treasury_intermediation,
+                treasury_market_activity,
+            ]
+            if assessment.verdict == "Stressed"
+        )
+
+        if stressed_count == 1:
+
+            return (
+                "One liquidity component is showing material "
+                "stress, but the broader framework does not "
+                "yet show confirmation across other liquidity "
+                "channels. Overall conditions are elevated "
+                "and warrant close attention."
+            )
+
+        return (
+            "Liquidity pressure is elevated across one or "
+            "more dimensions. Multiple indicators warrant "
+            "attention, although the evidence does not yet "
+            "meet the framework's threshold for broad "
+            "liquidity stress."
+        )
+
+    # ---------------------------------------------------------
+    # STRESSED
+    # ---------------------------------------------------------
+
+    return (
+        "Liquidity conditions are materially stressed. "
+        "Severe pressure is either present across multiple "
+        "dimensions or a stressed component is being "
+        "confirmed by deterioration elsewhere in the "
+        "liquidity framework."
+    )
 
     # ---------------------------------------------------------
     # ELEVATED
@@ -386,6 +501,11 @@ def build_liquidity_assessment(
             treasury_intermediation=
                 factors_by_key[
                     "treasury_intermediation"
+                ],
+
+            treasury_market_activity=
+                factors_by_key[
+                    "treasury_market_activity"
                 ],
         )
     )

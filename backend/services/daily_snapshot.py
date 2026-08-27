@@ -164,7 +164,7 @@ def build_daily_snapshot(
 
         1. Funding metrics
         2. System-liquidity metrics
-        3. Four-factor liquidity assessment
+        3. Registered-factor liquidity assessment
         4. Morning Brief
         5. Data freshness
         6. Stored news narrative
@@ -210,6 +210,7 @@ def build_daily_snapshot(
     #   2. System Liquidity
     #   3. Repo Market Pressure
     #   4. Treasury Intermediation
+    #   5. Treasury Market Activity
     #
     # No composite numeric score is used.
     # =========================================================
