@@ -6,17 +6,25 @@ from dataclasses import dataclass
 from backend.assessments.funding import (
     assess_funding,
 )
+
 from backend.assessments.models import (
     Assessment,
 )
+
 from backend.assessments.repo_market import (
     assess_repo_market,
 )
+
 from backend.assessments.system_liquidity import (
     assess_system_liquidity,
 )
+
 from backend.assessments.treasury_intermediation import (
     assess_treasury_intermediation,
+)
+
+from backend.assessments.treasury_market_activity import (
+    assess_treasury_market_activity,
 )
 
 from backend.commentary.factor_commentary import (
@@ -28,6 +36,8 @@ from backend.commentary.factor_commentary import (
     system_liquidity_what_matters,
     treasury_intermediation_watch,
     treasury_intermediation_what_matters,
+    treasury_market_activity_watch,
+    treasury_market_activity_what_matters,
 )
 
 
@@ -68,9 +78,13 @@ class FactorDefinition:
     """
 
     key: str
+
     display_name: str
+
     assessor: AssessmentBuilder
+
     what_matters_builder: WhatMattersBuilder
+
     watch_builder: WatchBuilder
 
 
@@ -83,6 +97,7 @@ FACTOR_REGISTRY: tuple[
     FactorDefinition,
     ...
 ] = (
+
     FactorDefinition(
         key="funding",
         display_name="Funding Conditions",
@@ -122,15 +137,28 @@ FACTOR_REGISTRY: tuple[
         watch_builder=
             treasury_intermediation_watch,
     ),
+
+    FactorDefinition(
+        key="treasury_market_activity",
+        display_name="Treasury Market Activity",
+        assessor=assess_treasury_market_activity,
+        what_matters_builder=
+            treasury_market_activity_what_matters,
+        watch_builder=
+            treasury_market_activity_watch,
+    ),
+
 )
 
 
 FACTOR_BY_KEY = {
+
     definition.key:
         definition
 
     for definition
     in FACTOR_REGISTRY
+
 }
 
 
@@ -142,11 +170,13 @@ def factor_definition(
     """
 
     try:
+
         return FACTOR_BY_KEY[
             key
         ]
 
     except KeyError as exc:
+
         raise KeyError(
             f"Unknown liquidity factor: {key}"
         ) from exc

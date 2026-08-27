@@ -330,3 +330,67 @@ def treasury_intermediation_watch(
         "market functioning begins to normalize or whether "
         "the disruption persists across multiple weeks."
     )
+# =============================================================
+# TREASURY MARKET ACTIVITY
+# =============================================================
+
+
+def treasury_market_activity_what_matters() -> str:
+    """
+    Explain the economic purpose of Factor #5.
+    """
+
+    return (
+        "Treasury Market Activity measures whether the "
+        "market is being asked to absorb an unusually "
+        "large volume of Treasury bill issuance and "
+        "whether auction results indicate difficulty "
+        "absorbing that supply. Gross bill issuance and "
+        "auction absorption are evaluated separately so "
+        "that heavy but orderly issuance is distinguished "
+        "from genuine market pressure."
+    )
+
+
+def treasury_market_activity_watch(
+    verdict: str,
+) -> str:
+    """
+    Describe what should be monitored next for
+    Treasury Market Activity.
+    """
+
+    if verdict == "Stressed":
+
+        return (
+            "Watch for continued weak bid-to-cover ratios, "
+            "elevated primary-dealer take-down, persistent "
+            "heavy Treasury issuance, repo-market pressure, "
+            "and any use of the Standing Repo Facility."
+        )
+
+    if verdict == "Elevated":
+
+        return (
+            "Watch whether weak auction absorption persists "
+            "across multiple bill tenors, whether primary "
+            "dealers are required to absorb a larger share "
+            "of issuance, and whether repo conditions begin "
+            "to confirm Treasury-market pressure."
+        )
+
+    if verdict == "Watch":
+
+        return (
+            "Watch whether unusually heavy Treasury bill "
+            "issuance continues to be absorbed normally. "
+            "Particular attention should be paid to "
+            "bid-to-cover ratios and primary-dealer "
+            "take-down across upcoming auctions."
+        )
+
+    return (
+        "Watch for a meaningful increase in Treasury bill "
+        "supply, deterioration in auction demand, or a "
+        "rise in primary-dealer take-down."
+    )

@@ -435,6 +435,45 @@ TREASURY_INTERMEDIATION_SERIES = (
     ),
 )
 
+# =============================================================
+# TREASURY MARKET ACTIVITY
+# =============================================================
+
+
+TREASURY_MARKET_ACTIVITY_SERIES = (
+
+    SeriesDefinition(
+        symbol="iorb",
+        name=(
+            "Interest Rate on Reserve "
+            "Balances"
+        ),
+        category="Treasury Market Activity",
+        frequency="Daily",
+        units="Percent",
+        provider="fred",
+        external_id="IORB",
+        source_units="Percent",
+        role="core",
+    ),
+
+    SeriesDefinition(
+        symbol="treasury_3m",
+        name=(
+            "3-Month Treasury "
+            "Constant Maturity Rate"
+        ),
+        category="Treasury Market Activity",
+        frequency="Daily",
+        units="Percent",
+        provider="fred",
+        external_id="DGS3MO",
+        source_units="Percent",
+        role="core",
+    ),
+
+)
+
 
 # =============================================================
 # COMPLETE CATALOG
@@ -453,6 +492,8 @@ SERIES_CATALOG: tuple[
     *SYSTEM_LIQUIDITY_SERIES,
 
     *TREASURY_INTERMEDIATION_SERIES,
+
+    *TREASURY_MARKET_ACTIVITY_SERIES,
 )
 
 

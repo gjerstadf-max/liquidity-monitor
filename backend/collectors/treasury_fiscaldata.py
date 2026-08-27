@@ -648,6 +648,98 @@ def fetch_treasury_bill_auctions(
 
     return auctions
 
+def fetch_treasury_bill_auctions_since(
+    start_date: date,
+    page_size: int = 1000,
+) -> list[TreasuryAuction]:
+    """
+    Fetch all Treasury bill auction records with an
+    auction date on or after start_date.
+
+    FiscalData uses page-based pagination. This function
+    continues until every matching page has been retrieved.
+
+    Both announced and completed auctions are retained.
+    """
+
+    if page_size < 1:
+        raise ValueError(
+            "page_size must be at least 1"
+        )
+
+    auctions: list[
+        TreasuryAuction
+    ] = []
+
+    page_number = 1
+
+    while True:
+
+        response = httpx.get(
+            TREASURY_AUCTIONS_API_URL,
+            params={
+                "filter": (
+                    "security_type:eq:Bill,"
+                    "auction_date:gte:"
+                    f"{start_date.isoformat()}"
+                ),
+
+                "sort":
+                    "auction_date",
+
+                "page[number]":
+                    page_number,
+
+                "page[size]":
+                    page_size,
+            },
+            timeout=30.0,
+        )
+
+        response.raise_for_status()
+
+        payload = (
+            response.json()
+        )
+
+        rows = (
+            payload.get(
+                "data",
+                []
+            )
+        )
+
+        auctions.extend(
+            _parse_auction(
+                row
+            )
+            for row
+            in rows
+        )
+
+        meta = (
+            payload.get(
+                "meta",
+                {}
+            )
+        )
+
+        total_pages = int(
+            meta.get(
+                "total-pages",
+                1,
+            )
+        )
+
+        if (
+            page_number
+            >= total_pages
+        ):
+            break
+
+        page_number += 1
+
+    return auctions
 
 # =============================================================
 # TERMINAL TEST

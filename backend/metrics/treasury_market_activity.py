@@ -1,21 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-from datetime import date
-
-from decimal import Decimal
-
-from statistics import mean, pstdev
-
-from sqlalchemy import select
 from collections import defaultdict
-from datetime import date, timedelta, datetime
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta
+from statistics import mean, pstdev
 from zoneinfo import ZoneInfo
 
-from backend.database.connection import (
-    get_session,
-)
+from sqlalchemy import select
+
+from backend.database.connection import get_session
 from backend.database.models import (
     Indicator,
     Observation,
@@ -24,195 +17,9 @@ from backend.database.models import (
 
 
 # =============================================================
-# DATA OBJECTS
+# CONSTANTS
 # =============================================================
 
-
-@dataclass(frozen=True)
-class TreasuryMarketSnapshot:
-    """
-    Current Treasury market relative-pricing snapshot.
-
-    The Treasury 3-month yield and IORB are always
-    aligned on the same observation date.
-    """
-
-    observation_date: date
-    previous_observation_date: date
-
-    treasury_3m: Decimal
-    previous_treasury_3m: Decimal
-    treasury_3m_change_bp: Decimal
-
-    iorb: Decimal
-    previous_iorb: Decimal
-    iorb_change_bp: Decimal
-
-    treasury_iorb_spread_bp: Decimal
-    previous_treasury_iorb_spread_bp: Decimal
-    spread_change_bp: Decimal
-
-
-@dataclass(frozen=True)
-class TreasuryMarketSpreadStatistics:
-    """
-    Historical context for the 3-month Treasury
-    yield relative to IORB.
-    """
-
-    observation_date: date
-    observations_used: int
-
-    current_spread_bp: Decimal
-
-    average_30d_bp: Decimal
-    average_60d_bp: Decimal
-
-    minimum_60d_bp: Decimal
-    maximum_60d_bp: Decimal
-
-    percentile_60d: float
-    zscore_60d: float
-
-
-# =============================================================
-# COMMON-DATE HISTORY
-# =============================================================
-
-
-def _load_common_rate_history(
-    as_of_date: date | None = None,
-) -> list[
-    tuple[
-        date,
-        Decimal,
-        Decimal,
-    ]
-]:
-    """
-    Return common Treasury 3-month / IORB observations
-    sorted newest first.
-
-    Each tuple contains:
-
-        observation_date
-        Treasury 3-month yield
-        IORB
-
-    Rates are matched strictly on observation date.
-
-    This prevents a future effective IORB observation
-    from being paired with an older Treasury market
-    observation.
-
-    If as_of_date is supplied, only common observations
-    on or before that date are returned.
-    """
-
-    with get_session() as session:
-
-        treasury_rows = session.scalars(
-            select(
-                Observation
-            )
-            .join(
-                Indicator
-            )
-            .where(
-                Indicator.symbol
-                == "treasury_3m"
-            )
-            .order_by(
-                Observation.observation_date.desc()
-            )
-        ).all()
-
-        iorb_rows = session.scalars(
-            select(
-                Observation
-            )
-            .join(
-                Indicator
-            )
-            .where(
-                Indicator.symbol
-                == "iorb"
-            )
-            .order_by(
-                Observation.observation_date.desc()
-            )
-        ).all()
-
-    if not treasury_rows:
-        raise RuntimeError(
-            "3-month Treasury observations "
-            "not found."
-        )
-
-    if not iorb_rows:
-        raise RuntimeError(
-            "IORB observations not found."
-        )
-
-    treasury_by_date = {
-        row.observation_date:
-            row.value
-
-        for row
-        in treasury_rows
-    }
-
-    iorb_by_date = {
-        row.observation_date:
-            row.value
-
-        for row
-        in iorb_rows
-    }
-
-    common_dates = (
-        set(treasury_by_date)
-        & set(iorb_by_date)
-    )
-
-    if as_of_date is not None:
-        common_dates = {
-            observation_date
-
-            for observation_date
-            in common_dates
-
-            if observation_date
-            <= as_of_date
-        }
-
-    common_dates = sorted(
-        common_dates,
-        reverse=True,
-    )
-
-    if not common_dates:
-        raise RuntimeError(
-            "No common 3-month Treasury / IORB "
-            "observation dates found."
-        )
-
-    return [
-        (
-            observation_date,
-
-            treasury_by_date[
-                observation_date
-            ],
-
-            iorb_by_date[
-                observation_date
-            ],
-        )
-
-        for observation_date
-        in common_dates
-    ]
 
 REGULAR_BILL_TERMS = (
     "4-Week",
@@ -224,6 +31,7 @@ REGULAR_BILL_TERMS = (
     "52-Week",
 )
 
+
 TREASURY_HISTORY_START = date(
     2021,
     7,
@@ -231,7 +39,198 @@ TREASURY_HISTORY_START = date(
 )
 
 
+TREASURY_3M_SYMBOL = (
+    "treasury_3m"
+)
+
+
+IORB_SYMBOL = (
+    "iorb"
+)
+
+
+# =============================================================
+# DATA OBJECTS
+# =============================================================
+
+
+@dataclass(frozen=True)
+class TreasuryMarketSnapshot:
+    """
+    Latest common-date Treasury 3M / IORB observation.
+    """
+
+    observation_date: date
+
+    treasury_3m_percent: float
+
+    iorb_percent: float
+
+    spread_bp: float
+
+    previous_spread_bp: float | None
+
+    change_bp: float | None
+
+
+@dataclass(frozen=True)
+class TreasuryMarketSpreadStatistics:
+    """
+    Statistical context for the Treasury 3M - IORB spread.
+    """
+
+    observation_date: date
+
+    lookback: int
+
+    observations_used: int
+
+    current_spread_bp: float
+
+    previous_spread_bp: float | None
+
+    change_bp: float | None
+
+    average_spread_bp: float
+
+    minimum_spread_bp: float
+
+    maximum_spread_bp: float
+
+    percentile: float
+
+    zscore: float
+
+    # ---------------------------------------------------------
+    # COMPATIBILITY PROPERTIES
+    # ---------------------------------------------------------
+    #
+    # These preserve the original interface used by the
+    # Factor #5 signal code while allowing lookback to vary.
+    #
+    # ---------------------------------------------------------
+
+    @property
+    def average_60d_bp(
+        self,
+    ) -> float:
+        return self.average_spread_bp
+
+    @property
+    def minimum_60d_bp(
+        self,
+    ) -> float:
+        return self.minimum_spread_bp
+
+    @property
+    def maximum_60d_bp(
+        self,
+    ) -> float:
+        return self.maximum_spread_bp
+
+    @property
+    def percentile_60d(
+        self,
+    ) -> float:
+        return self.percentile
+
+    @property
+    def zscore_60d(
+        self,
+    ) -> float:
+        return self.zscore
+
+
+@dataclass(frozen=True)
+class TreasuryBillSupplyStatistics:
+    """
+    Trailing gross Treasury bill supply.
+
+    Supply is measured using issue_date because settlement
+    is when investors fund Treasury purchases.
+
+    Gross supply includes both regular bills and CMBs.
+    """
+
+    observation_date: date
+
+    window_days: int
+
+    gross_supply_billions: float
+
+    regular_supply_billions: float
+
+    cmb_supply_billions: float
+
+    observations_used: int
+
+    historical_average_billions: float
+
+    historical_minimum_billions: float
+
+    historical_maximum_billions: float
+
+    historical_percentile: float
+
+    historical_zscore: float
+
+    trailing_52_week_average_billions: float
+
+    trailing_52_week_minimum_billions: float
+
+    trailing_52_week_maximum_billions: float
+
+    trailing_52_week_percentile: float
+
+    trailing_52_week_zscore: float
+
+
+@dataclass(frozen=True)
+class TreasuryAuctionAbsorptionStatistics:
+    """
+    Treasury bill auction absorption pressure.
+
+    Positive pressure means weaker absorption.
+
+    Negative pressure means stronger absorption.
+    """
+
+    observation_date: date
+
+    window_days: int
+
+    auctions_used: int
+
+    offering_amount_billions: float
+
+    current_pressure: float
+
+    observations_used: int
+
+    historical_average: float
+
+    historical_minimum: float
+
+    historical_maximum: float
+
+    historical_percentile: float
+
+    historical_zscore: float
+
+
+# =============================================================
+# GENERAL HELPERS
+# =============================================================
+
+
 def _market_today() -> date:
+    """
+    Return the current Treasury-market calendar date.
+
+    Cloud Run operates in UTC, so explicitly use
+    America/New_York rather than date.today().
+    """
+
     return datetime.now(
         ZoneInfo(
             "America/New_York"
@@ -243,6 +242,16 @@ def _percentile(
     current: float,
     values: list[float],
 ) -> float:
+    """
+    Empirical percentile of current within values.
+    """
+
+    if not values:
+        raise ValueError(
+            "Cannot calculate percentile "
+            "from an empty list."
+        )
+
     return (
         sum(
             1
@@ -258,20 +267,226 @@ def _zscore(
     current: float,
     values: list[float],
 ) -> float:
-    std = pstdev(
+    """
+    Population z-score of current within values.
+    """
+
+    if not values:
+        raise ValueError(
+            "Cannot calculate z-score "
+            "from an empty list."
+        )
+
+    average = mean(
         values
     )
 
-    if std == 0:
+    standard_deviation = pstdev(
+        values
+    )
+
+    if standard_deviation == 0:
         return 0.0
 
     return (
         current
-        - mean(values)
-    ) / std
+        - average
+    ) / standard_deviation
+
 
 # =============================================================
-# CURRENT SNAPSHOT
+# FRED SERIES HELPERS
+# =============================================================
+
+
+def _load_indicator_history(
+    symbol: str,
+    as_of_date: date | None = None,
+) -> list[
+    tuple[
+        date,
+        float,
+    ]
+]:
+    """
+    Load observation history for a scalar indicator.
+    """
+
+    with get_session() as session:
+
+        indicator = session.scalar(
+            select(
+                Indicator
+            )
+            .where(
+                Indicator.symbol
+                == symbol
+            )
+        )
+
+        if indicator is None:
+            raise RuntimeError(
+                f"Indicator not found: {symbol}"
+            )
+
+        statement = (
+            select(
+                Observation.observation_date,
+                Observation.value,
+            )
+            .where(
+                Observation.indicator_id
+                == indicator.id
+            )
+        )
+
+        if as_of_date is not None:
+
+            statement = (
+                statement.where(
+                    Observation.observation_date
+                    <= as_of_date
+                )
+            )
+
+        statement = statement.order_by(
+            Observation.observation_date
+        )
+
+        rows = session.execute(
+            statement
+        ).all()
+
+    return [
+        (
+            observation_date,
+            float(value),
+        )
+        for (
+            observation_date,
+            value,
+        )
+        in rows
+        if value is not None
+    ]
+
+
+def _load_common_rate_history(
+    as_of_date: date | None = None,
+) -> list[
+    tuple[
+        date,
+        float,
+        float,
+        float,
+    ]
+]:
+    """
+    Load Treasury 3M and IORB strictly on common
+    observation dates.
+
+    Returns:
+
+        (
+            observation_date,
+            treasury_3m_percent,
+            iorb_percent,
+            spread_bp,
+        )
+
+    This strict common-date alignment prevents a future
+    effective administered IORB observation from being
+    combined with an older Treasury market observation.
+    """
+
+    treasury_history = (
+        _load_indicator_history(
+            TREASURY_3M_SYMBOL,
+            as_of_date=
+                as_of_date,
+        )
+    )
+
+    iorb_history = (
+        _load_indicator_history(
+            IORB_SYMBOL,
+            as_of_date=
+                as_of_date,
+        )
+    )
+
+    treasury_by_date = {
+        observation_date:
+            value
+
+        for (
+            observation_date,
+            value,
+        )
+        in treasury_history
+    }
+
+    iorb_by_date = {
+        observation_date:
+            value
+
+        for (
+            observation_date,
+            value,
+        )
+        in iorb_history
+    }
+
+    common_dates = sorted(
+        set(
+            treasury_by_date
+        )
+        & set(
+            iorb_by_date
+        )
+    )
+
+    if not common_dates:
+        raise RuntimeError(
+            "No common observation dates found "
+            "for Treasury 3M and IORB."
+        )
+
+    history = []
+
+    for observation_date in common_dates:
+
+        treasury_rate = (
+            treasury_by_date[
+                observation_date
+            ]
+        )
+
+        iorb_rate = (
+            iorb_by_date[
+                observation_date
+            ]
+        )
+
+        spread_bp = (
+            treasury_rate
+            - iorb_rate
+        ) * 100.0
+
+        history.append(
+            (
+                observation_date,
+                treasury_rate,
+                iorb_rate,
+                spread_bp,
+            )
+        )
+
+    return history
+
+
+# =============================================================
+# TREASURY 3M - IORB
 # =============================================================
 
 
@@ -279,11 +494,8 @@ def latest_treasury_market_snapshot(
     as_of_date: date | None = None,
 ) -> TreasuryMarketSnapshot:
     """
-    Return the latest Treasury market relative-pricing
-    snapshot available on or before as_of_date.
-
-    If as_of_date is None, the latest common observation
-    date is used.
+    Return the latest common-date Treasury 3M / IORB
+    observation and change from the prior common date.
     """
 
     history = (
@@ -293,92 +505,46 @@ def latest_treasury_market_snapshot(
         )
     )
 
-    if len(history) < 2:
-        raise RuntimeError(
-            "At least two common Treasury 3-month / "
-            "IORB observation dates are required."
+    (
+        observation_date,
+        treasury_rate,
+        iorb_rate,
+        spread_bp,
+    ) = history[-1]
+
+    previous_spread_bp = None
+    change_bp = None
+
+    if len(history) >= 2:
+
+        previous_spread_bp = (
+            history[-2][3]
         )
 
-    (
-        current_date,
-        treasury_3m,
-        iorb,
-    ) = history[0]
-
-    (
-        previous_date,
-        previous_treasury_3m,
-        previous_iorb,
-    ) = history[1]
-
-    treasury_change_bp = (
-        treasury_3m
-        - previous_treasury_3m
-    ) * Decimal(
-        "100"
-    )
-
-    iorb_change_bp = (
-        iorb
-        - previous_iorb
-    ) * Decimal(
-        "100"
-    )
-
-    spread = (
-        treasury_3m
-        - iorb
-    ) * Decimal(
-        "100"
-    )
-
-    previous_spread = (
-        previous_treasury_3m
-        - previous_iorb
-    ) * Decimal(
-        "100"
-    )
+        change_bp = (
+            spread_bp
+            - previous_spread_bp
+        )
 
     return TreasuryMarketSnapshot(
         observation_date=
-            current_date,
+            observation_date,
 
-        previous_observation_date=
-            previous_date,
+        treasury_3m_percent=
+            treasury_rate,
 
-        treasury_3m=
-            treasury_3m,
+        iorb_percent=
+            iorb_rate,
 
-        previous_treasury_3m=
-            previous_treasury_3m,
+        spread_bp=
+            spread_bp,
 
-        treasury_3m_change_bp=
-            treasury_change_bp,
+        previous_spread_bp=
+            previous_spread_bp,
 
-        iorb=
-            iorb,
-
-        previous_iorb=
-            previous_iorb,
-
-        iorb_change_bp=
-            iorb_change_bp,
-
-        treasury_iorb_spread_bp=
-            spread,
-
-        previous_treasury_iorb_spread_bp=
-            previous_spread,
-
-        spread_change_bp=
-            spread
-            - previous_spread,
+        change_bp=
+            change_bp,
     )
-
-
-# =============================================================
-# HISTORICAL STATISTICS
-# =============================================================
 
 
 def treasury_market_spread_statistics(
@@ -386,19 +552,11 @@ def treasury_market_spread_statistics(
     as_of_date: date | None = None,
 ) -> TreasuryMarketSpreadStatistics:
     """
-    Calculate historical context for the spread between
-    the 3-month Treasury yield and IORB.
+    Statistical context for Treasury 3M - IORB.
 
-    Spread values are expressed in basis points.
-
-    Positive spread:
-        Treasury 3-month yield is above IORB.
-
-    Negative spread:
-        Treasury 3-month yield is below IORB.
-
-    If as_of_date is supplied, only observations on or
-    before that date are used.
+    This is a supporting Factor #5 indicator rather than
+    a core supply signal because the spread is also
+    influenced by monetary-policy expectations.
     """
 
     if lookback < 2:
@@ -413,179 +571,79 @@ def treasury_market_spread_statistics(
         )
     )
 
-    selected = history[
-        :lookback
-    ]
-
-    if len(selected) < 2:
+    if len(history) < 2:
         raise RuntimeError(
-            "At least two common observations are "
-            "required for Treasury market spread "
-            "statistics."
+            "At least two common Treasury 3M / IORB "
+            "observations are required."
         )
 
-    spreads = [
-        (
-            treasury_3m
-            - iorb
-        ) * Decimal(
-            "100"
-        )
+    trailing = (
+        history[
+            -lookback:
+        ]
+    )
 
-        for (
-            _,
-            treasury_3m,
-            iorb,
-        )
-        in selected
+    values = [
+        row[3]
+        for row in trailing
     ]
 
-    current_spread = (
-        spreads[0]
+    current = (
+        values[-1]
     )
 
-    last_30 = (
-        spreads[:30]
+    previous = (
+        history[-2][3]
     )
-
-    average_30 = (
-        sum(
-            last_30,
-            Decimal("0"),
-        )
-        / Decimal(
-            len(last_30)
-        )
-    )
-
-    average_60 = (
-        sum(
-            spreads,
-            Decimal("0"),
-        )
-        / Decimal(
-            len(spreads)
-        )
-    )
-
-    minimum = min(
-        spreads
-    )
-
-    maximum = max(
-        spreads
-    )
-
-    observations_at_or_below_current = sum(
-        1
-
-        for value
-        in spreads
-
-        if value
-        <= current_spread
-    )
-
-    percentile = (
-        observations_at_or_below_current
-        / len(spreads)
-        * 100.0
-    )
-
-    spread_floats = [
-        float(value)
-
-        for value
-        in spreads
-    ]
-
-    spread_mean = mean(
-        spread_floats
-    )
-
-    spread_std = pstdev(
-        spread_floats
-    )
-
-    if spread_std == 0:
-        zscore = 0.0
-
-    else:
-        zscore = (
-            float(
-                current_spread
-            )
-            - spread_mean
-        ) / spread_std
 
     return TreasuryMarketSpreadStatistics(
         observation_date=
-            selected[0][0],
+            history[-1][0],
+
+        lookback=
+            lookback,
 
         observations_used=
-            len(selected),
+            len(values),
 
         current_spread_bp=
-            current_spread,
+            current,
 
-        average_30d_bp=
-            average_30,
+        previous_spread_bp=
+            previous,
 
-        average_60d_bp=
-            average_60,
+        change_bp=
+            current
+            - previous,
 
-        minimum_60d_bp=
-            minimum,
+        average_spread_bp=
+            mean(values),
 
-        maximum_60d_bp=
-            maximum,
+        minimum_spread_bp=
+            min(values),
 
-        percentile_60d=
-            percentile,
+        maximum_spread_bp=
+            max(values),
 
-        zscore_60d=
-            zscore,
+        percentile=
+            _percentile(
+                current,
+                values,
+            ),
+
+        zscore=
+            _zscore(
+                current,
+                values,
+            ),
     )
-@dataclass(frozen=True)
-class TreasuryBillSupplyStatistics:
-    observation_date: date
-    window_days: int
-
-    gross_supply_billions: float
-    regular_supply_billions: float
-    cmb_supply_billions: float
-
-    observations_used: int
-
-    historical_average_billions: float
-    historical_minimum_billions: float
-    historical_maximum_billions: float
-    historical_percentile: float
-    historical_zscore: float
-
-    trailing_52_week_average_billions: float
-    trailing_52_week_minimum_billions: float
-    trailing_52_week_maximum_billions: float
-    trailing_52_week_percentile: float
-    trailing_52_week_zscore: float
 
 
-@dataclass(frozen=True)
-class TreasuryAuctionAbsorptionStatistics:
-    observation_date: date
-    window_days: int
+# =============================================================
+# TREASURY BILL SUPPLY
+# =============================================================
 
-    auctions_used: int
-    offering_amount_billions: float
 
-    current_pressure: float
-
-    observations_used: int
-    historical_average: float
-    historical_minimum: float
-    historical_maximum: float
-    historical_percentile: float
-    historical_zscore: float
 def treasury_bill_supply_statistics(
     window_days: int = 28,
     as_of_date: date | None = None,
@@ -645,9 +703,13 @@ def treasury_bill_supply_statistics(
     records = [
         (
             issue_date,
-            float(amount)
+            float(
+                amount
+            )
             / 1_000_000_000,
-            bool(is_cmb),
+            bool(
+                is_cmb
+            ),
         )
         for (
             issue_date,
@@ -665,7 +727,9 @@ def treasury_bill_supply_statistics(
         start_date = (
             observation_date
             - timedelta(
-                days=window_days - 1
+                days=
+                    window_days
+                    - 1
             )
         )
 
@@ -686,16 +750,33 @@ def treasury_bill_supply_statistics(
             )
             and (
                 cmb_filter is None
-                or is_cmb == cmb_filter
+                or is_cmb
+                == cmb_filter
             )
         )
 
     first_date = (
         TREASURY_HISTORY_START
         + timedelta(
-            days=window_days - 1
+            days=
+                window_days
+                - 1
         )
     )
+
+    if as_of_date < first_date:
+        raise RuntimeError(
+            "Insufficient Treasury bill history "
+            "for the requested date."
+        )
+
+    # ---------------------------------------------------------
+    # WEEKLY HISTORY
+    #
+    # Align historical observations to the same weekday as
+    # as_of_date so weekday settlement patterns do not distort
+    # the comparison.
+    # ---------------------------------------------------------
 
     offset = (
         as_of_date.weekday()
@@ -705,12 +786,16 @@ def treasury_bill_supply_statistics(
     sample_date = (
         first_date
         + timedelta(
-            days=offset
+            days=
+                offset
         )
     )
 
     history: list[
-        tuple[date, float]
+        tuple[
+            date,
+            float,
+        ]
     ] = []
 
     while sample_date <= as_of_date:
@@ -733,6 +818,7 @@ def treasury_bill_supply_statistics(
         or history[-1][0]
         != as_of_date
     ):
+
         history.append(
             (
                 as_of_date,
@@ -748,10 +834,20 @@ def treasury_bill_supply_statistics(
         in history
     ]
 
-    current = values[-1]
+    if not values:
+        raise RuntimeError(
+            "No Treasury bill supply observations "
+            "could be calculated."
+        )
+
+    current = (
+        values[-1]
+    )
 
     trailing_52 = (
-        values[-52:]
+        values[
+            -52:
+        ]
     )
 
     return TreasuryBillSupplyStatistics(
@@ -780,13 +876,19 @@ def treasury_bill_supply_statistics(
             len(values),
 
         historical_average_billions=
-            mean(values),
+            mean(
+                values
+            ),
 
         historical_minimum_billions=
-            min(values),
+            min(
+                values
+            ),
 
         historical_maximum_billions=
-            max(values),
+            max(
+                values
+            ),
 
         historical_percentile=
             _percentile(
@@ -801,13 +903,19 @@ def treasury_bill_supply_statistics(
             ),
 
         trailing_52_week_average_billions=
-            mean(trailing_52),
+            mean(
+                trailing_52
+            ),
 
         trailing_52_week_minimum_billions=
-            min(trailing_52),
+            min(
+                trailing_52
+            ),
 
         trailing_52_week_maximum_billions=
-            max(trailing_52),
+            max(
+                trailing_52
+            ),
 
         trailing_52_week_percentile=
             _percentile(
@@ -821,6 +929,13 @@ def treasury_bill_supply_statistics(
                 trailing_52,
             ),
     )
+
+
+# =============================================================
+# TREASURY AUCTION ABSORPTION
+# =============================================================
+
+
 def treasury_auction_absorption_statistics(
     window_days: int = 28,
     lookback: int = 52,
@@ -831,20 +946,46 @@ def treasury_auction_absorption_statistics(
     Measure Treasury bill auction absorption pressure.
 
     Each regular bill auction is compared only with
-    prior auctions of the same tenor.
+    PRIOR auctions of the same tenor.
 
     Lower bid-to-cover increases pressure.
+
     Higher primary-dealer take-down increases pressure.
 
-    Auction pressure is:
+    Auction pressure:
 
-        (-BTC z-score + dealer-share z-score) / 2
+        (
+            - bid_to_cover_z
+            + dealer_share_z
+        ) / 2
 
-    The current window is weighted by offering amount.
+    The current trailing window is weighted by each
+    auction's offering amount.
 
     Positive values indicate weaker absorption.
+
     Negative values indicate stronger absorption.
     """
+
+    if window_days < 1:
+        raise ValueError(
+            "window_days must be at least 1"
+        )
+
+    if lookback < 2:
+        raise ValueError(
+            "lookback must be at least 2"
+        )
+
+    if minimum_history < 2:
+        raise ValueError(
+            "minimum_history must be at least 2"
+        )
+
+    if minimum_history > lookback:
+        raise ValueError(
+            "minimum_history cannot exceed lookback"
+        )
 
     if as_of_date is None:
         as_of_date = (
@@ -888,12 +1029,27 @@ def treasury_auction_absorption_statistics(
 
     history_by_term: dict[
         str,
-        list[tuple[float, float]],
+        list[
+            tuple[
+                float,
+                float,
+            ]
+        ],
     ] = defaultdict(
         list
     )
 
-    scored = []
+    scored: list[
+        tuple[
+            date,
+            float,
+            float,
+        ]
+    ] = []
+
+    # ---------------------------------------------------------
+    # SCORE EACH AUCTION AGAINST PRIOR SAME-TENOR AUCTIONS
+    # ---------------------------------------------------------
 
     for row in rows:
 
@@ -932,18 +1088,25 @@ def treasury_auction_absorption_statistics(
         prior = (
             history_by_term[
                 row.security_term
-            ][-lookback:]
+            ][
+                -lookback:
+            ]
         )
 
-        if len(prior) >= minimum_history:
+        if (
+            len(
+                prior
+            )
+            >= minimum_history
+        ):
 
-            btc_values = [
+            prior_btc = [
                 item[0]
                 for item
                 in prior
             ]
 
-            dealer_values = [
+            prior_dealer = [
                 item[1]
                 for item
                 in prior
@@ -952,20 +1115,30 @@ def treasury_auction_absorption_statistics(
             btc_z = (
                 _zscore(
                     btc,
-                    btc_values,
+                    prior_btc,
                 )
             )
 
             dealer_z = (
                 _zscore(
                     dealer_share,
-                    dealer_values,
+                    prior_dealer,
                 )
             )
 
-            pressure = (
+            # Lower BTC = more pressure.
+            btc_pressure = (
                 -btc_z
-                + dealer_z
+            )
+
+            # Higher dealer take-down = more pressure.
+            dealer_pressure = (
+                dealer_z
+            )
+
+            pressure = (
+                btc_pressure
+                + dealer_pressure
             ) / 2.0
 
             scored.append(
@@ -975,6 +1148,13 @@ def treasury_auction_absorption_statistics(
                     pressure,
                 )
             )
+
+        # -----------------------------------------------------
+        # IMPORTANT
+        #
+        # Add the current auction to history only AFTER
+        # scoring it. This avoids look-ahead contamination.
+        # -----------------------------------------------------
 
         history_by_term[
             row.security_term
@@ -987,9 +1167,13 @@ def treasury_auction_absorption_statistics(
 
     if not scored:
         raise RuntimeError(
-            "No Treasury auctions have "
-            "sufficient history for scoring."
+            "No Treasury auctions have sufficient "
+            "history for scoring."
         )
+
+    # ---------------------------------------------------------
+    # TRAILING WINDOW AGGREGATION
+    # ---------------------------------------------------------
 
     def pressure_as_of(
         observation_date: date,
@@ -1002,16 +1186,16 @@ def treasury_auction_absorption_statistics(
         start_date = (
             observation_date
             - timedelta(
-                days=window_days - 1
+                days=
+                    window_days
+                    - 1
             )
         )
 
         selected = [
             item
-
             for item
             in scored
-
             if (
                 start_date
                 <= item[0]
@@ -1020,6 +1204,7 @@ def treasury_auction_absorption_statistics(
         ]
 
         if not selected:
+
             return (
                 None,
                 0,
@@ -1032,7 +1217,8 @@ def treasury_auction_absorption_statistics(
             in selected
         )
 
-        if total_offering == 0:
+        if total_offering <= 0:
+
             return (
                 None,
                 0,
@@ -1056,9 +1242,15 @@ def treasury_auction_absorption_statistics(
 
         return (
             pressure,
-            len(selected),
+            len(
+                selected
+            ),
             total_offering,
         )
+
+    # ---------------------------------------------------------
+    # WEEKLY HISTORY
+    # ---------------------------------------------------------
 
     first_scored_date = (
         scored[0][0]
@@ -1067,9 +1259,17 @@ def treasury_auction_absorption_statistics(
     first_sample_date = (
         first_scored_date
         + timedelta(
-            days=window_days - 1
+            days=
+                window_days
+                - 1
         )
     )
+
+    if as_of_date < first_sample_date:
+        raise RuntimeError(
+            "Insufficient scored Treasury auction "
+            "history for the requested date."
+        )
 
     offset = (
         as_of_date.weekday()
@@ -1079,20 +1279,26 @@ def treasury_auction_absorption_statistics(
     sample_date = (
         first_sample_date
         + timedelta(
-            days=offset
+            days=
+                offset
         )
     )
 
     history: list[
-        tuple[date, float]
+        tuple[
+            date,
+            float,
+        ]
     ] = []
 
     while sample_date <= as_of_date:
 
-        pressure, _, _ = (
-            pressure_as_of(
-                sample_date
-            )
+        (
+            pressure,
+            _,
+            _,
+        ) = pressure_as_of(
+            sample_date
         )
 
         if pressure is not None:
@@ -1118,8 +1324,8 @@ def treasury_auction_absorption_statistics(
 
     if current is None:
         raise RuntimeError(
-            "No scored Treasury auctions "
-            "available in current window."
+            "No scored Treasury auctions are available "
+            "in the current trailing window."
         )
 
     if (
@@ -1127,6 +1333,7 @@ def treasury_auction_absorption_statistics(
         or history[-1][0]
         != as_of_date
     ):
+
         history.append(
             (
                 as_of_date,
@@ -1157,16 +1364,24 @@ def treasury_auction_absorption_statistics(
             current,
 
         observations_used=
-            len(values),
+            len(
+                values
+            ),
 
         historical_average=
-            mean(values),
+            mean(
+                values
+            ),
 
         historical_minimum=
-            min(values),
+            min(
+                values
+            ),
 
         historical_maximum=
-            max(values),
+            max(
+                values
+            ),
 
         historical_percentile=
             _percentile(
@@ -1181,6 +1396,7 @@ def treasury_auction_absorption_statistics(
             ),
     )
 
+
 # =============================================================
 # TERMINAL DISPLAY
 # =============================================================
@@ -1190,8 +1406,7 @@ def print_treasury_market_activity(
     as_of_date: date | None = None,
 ) -> None:
     """
-    Print the current Treasury market relative-pricing
-    diagnostics.
+    Print all current Factor #5 metric diagnostics.
     """
 
     snapshot = (
@@ -1201,11 +1416,29 @@ def print_treasury_market_activity(
         )
     )
 
-    stats = (
+    pricing = (
         treasury_market_spread_statistics(
             lookback=60,
             as_of_date=
-                as_of_date,
+                as_of_date
+        )
+    )
+
+    supply = (
+        treasury_bill_supply_statistics(
+            window_days=28,
+            as_of_date=
+                as_of_date
+        )
+    )
+
+    absorption = (
+        treasury_auction_absorption_statistics(
+            window_days=28,
+            lookback=52,
+            minimum_history=20,
+            as_of_date=
+                as_of_date
         )
     )
 
@@ -1216,101 +1449,147 @@ def print_treasury_market_activity(
     )
 
     print(
-        "=" * 72
+        "=" * 78
     )
 
     print()
 
     print(
-        "Observation date:"
+        "SUPPLY LOAD"
     )
 
     print(
-        f"  {snapshot.observation_date}"
-    )
-
-    print()
-
-    print(
-        "3-Month Treasury:"
+        "-" * 78
     )
 
     print(
-        f"  {snapshot.treasury_3m:.2f}%"
-    )
-
-    print()
-
-    print(
-        "IORB:"
+        f"Observation date:      "
+        f"{supply.observation_date}"
     )
 
     print(
-        f"  {snapshot.iorb:.2f}%"
-    )
-
-    print()
-
-    print(
-        "Treasury 3M - IORB spread:"
+        f"Gross 28-day supply:   "
+        f"${supply.gross_supply_billions:,.1f}B"
     )
 
     print(
-        f"  "
-        f"{snapshot.treasury_iorb_spread_bp:+.1f} bp"
-    )
-
-    print()
-
-    print(
-        "Previous spread:"
+        f"Regular bills:         "
+        f"${supply.regular_supply_billions:,.1f}B"
     )
 
     print(
-        f"  "
-        f"{snapshot.previous_treasury_iorb_spread_bp:+.1f} bp"
+        f"CMBs:                  "
+        f"${supply.cmb_supply_billions:,.1f}B"
+    )
+
+    print(
+        f"52-week percentile:    "
+        f"{supply.trailing_52_week_percentile:.1f}"
+    )
+
+    print(
+        f"52-week z-score:        "
+        f"{supply.trailing_52_week_zscore:+.2f}"
     )
 
     print()
 
     print(
-        "Spread change:"
+        "AUCTION ABSORPTION"
     )
 
     print(
-        f"  "
-        f"{snapshot.spread_change_bp:+.1f} bp"
+        "-" * 78
+    )
+
+    print(
+        f"Pressure:               "
+        f"{absorption.current_pressure:+.2f}"
+    )
+
+    print(
+        f"Historical percentile:  "
+        f"{absorption.historical_percentile:.1f}"
+    )
+
+    print(
+        f"Historical z-score:      "
+        f"{absorption.historical_zscore:+.2f}"
+    )
+
+    print(
+        f"Auctions used:          "
+        f"{absorption.auctions_used}"
+    )
+
+    print(
+        f"Offering amount:        "
+        f"${absorption.offering_amount_billions:,.1f}B"
     )
 
     print()
 
     print(
-        "60-observation context:"
+        "RELATIVE PRICING — SUPPORTING"
     )
 
     print(
-        f"  Average: "
-        f"{stats.average_60d_bp:+.1f} bp"
+        "-" * 78
     )
 
     print(
-        f"  Minimum: "
-        f"{stats.minimum_60d_bp:+.1f} bp"
+        f"Observation date:       "
+        f"{snapshot.observation_date}"
     )
 
     print(
-        f"  Maximum: "
-        f"{stats.maximum_60d_bp:+.1f} bp"
+        f"3-Month Treasury:       "
+        f"{snapshot.treasury_3m_percent:.2f}%"
     )
 
     print(
-        f"  Percentile: "
-        f"{stats.percentile_60d:.1f}"
+        f"IORB:                   "
+        f"{snapshot.iorb_percent:.2f}%"
     )
 
     print(
-        f"  Z-score: "
-        f"{stats.zscore_60d:+.2f}"
+        f"Treasury 3M - IORB:     "
+        f"{snapshot.spread_bp:+.1f} bp"
+    )
+
+    if snapshot.previous_spread_bp is not None:
+
+        print(
+            f"Previous spread:        "
+            f"{snapshot.previous_spread_bp:+.1f} bp"
+        )
+
+    if snapshot.change_bp is not None:
+
+        print(
+            f"Change:                 "
+            f"{snapshot.change_bp:+.1f} bp"
+        )
+
+    print(
+        f"60-observation average: "
+        f"{pricing.average_spread_bp:+.1f} bp"
+    )
+
+    print(
+        f"60-observation range:   "
+        f"{pricing.minimum_spread_bp:+.1f} to "
+        f"{pricing.maximum_spread_bp:+.1f} bp"
+    )
+
+    print(
+        f"60-observation pct:     "
+        f"{pricing.percentile:.1f}"
+    )
+
+    print(
+        f"60-observation z-score: "
+        f"{pricing.zscore:+.2f}"
     )
 
     print()
