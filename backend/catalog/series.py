@@ -472,6 +472,18 @@ TREASURY_MARKET_ACTIVITY_SERIES = (
         role="core",
     ),
 
+    SeriesDefinition(
+        symbol="fed_repo_operations",
+        name="Federal Reserve Repo Operations Accepted",
+        category="repo_market",
+        frequency="Daily",
+        units="Billions of U.S. Dollars",
+        provider="fred",
+        external_id="RPTTLD",
+        source_units="Billions of U.S. Dollars",
+        role="supporting",
+    ),
+
 )
 
 

@@ -76,6 +76,29 @@ class RepoMarketStatistics:
 
     sofr_volume: RepoMetricContext
 
+@dataclass(frozen=True)
+class FedRepoOperationsStatistics:
+    """
+    Supporting diagnostic for Federal Reserve
+    repo-operation usage.
+
+    This series is intentionally kept separate from the
+    common-date repo-market history because its observation
+    calendar differs from SOFR and other reference rates.
+    """
+
+    observation_date: date
+
+    current_billions: Decimal
+    previous_billions: Decimal | None
+
+    maximum_5_observations_billions: Decimal
+    maximum_20_observations_billions: Decimal
+
+    positive_observations_20: int
+    observations_ge_1b_20: int
+    observations_ge_5b_20: int
+    observations_ge_10b_20: int
 
 # =============================================================
 # DATABASE HELPERS
@@ -418,7 +441,135 @@ def _metric_context(
 # =============================================================
 # PUBLIC FUNCTIONS
 # =============================================================
+def fed_repo_operations_statistics(
+    lookback: int = 60,
+    as_of_date: date | None = None,
+) -> FedRepoOperationsStatistics:
+    """
+    Return current and recent Federal Reserve
+    repo-operation usage.
 
+    This is a supporting confirmation diagnostic.
+
+    No statistical z-score is used because the series is
+    zero-heavy and highly episodic. Economic magnitude is
+    more informative than relative statistical abnormality.
+    """
+
+    if lookback < 20:
+        raise ValueError(
+            "lookback must be at least 20"
+        )
+
+    series = _load_series(
+        "fed_repo_operations"
+    )
+
+    observations = sorted(
+        (
+            (
+                observation_date,
+                value,
+            )
+            for (
+                observation_date,
+                value,
+            )
+            in series.items()
+            if (
+                as_of_date is None
+                or observation_date <= as_of_date
+            )
+        ),
+        key=lambda item: item[0],
+        reverse=True,
+    )
+
+    if not observations:
+        raise RuntimeError(
+            "No Federal Reserve repo-operation "
+            "observations found."
+        )
+
+    selected = (
+        observations[:lookback]
+    )
+
+    current_date = (
+        selected[0][0]
+    )
+
+    current_value = (
+        selected[0][1]
+    )
+
+    previous_value = None
+
+    if len(selected) >= 2:
+        previous_value = (
+            selected[1][1]
+        )
+
+    last_5 = [
+        value
+        for _, value
+        in selected[:5]
+    ]
+
+    last_20 = [
+        value
+        for _, value
+        in selected[:20]
+    ]
+
+    return FedRepoOperationsStatistics(
+        observation_date=
+            current_date,
+
+        current_billions=
+            current_value,
+
+        previous_billions=
+            previous_value,
+
+        maximum_5_observations_billions=
+            max(last_5),
+
+        maximum_20_observations_billions=
+            max(last_20),
+
+        positive_observations_20=
+            sum(
+                1
+                for value
+                in last_20
+                if value > 0
+            ),
+
+        observations_ge_1b_20=
+            sum(
+                1
+                for value
+                in last_20
+                if value >= Decimal("1")
+            ),
+
+        observations_ge_5b_20=
+            sum(
+                1
+                for value
+                in last_20
+                if value >= Decimal("5")
+            ),
+
+        observations_ge_10b_20=
+            sum(
+                1
+                for value
+                in last_20
+                if value >= Decimal("10")
+            ),
+    )
 
 def latest_repo_market_snapshot(
     as_of_date: date | None = None,
@@ -582,7 +733,6 @@ def _print_context(
 
 
 def print_repo_market_diagnostics() -> None:
-
     snapshot = (
         latest_repo_market_snapshot()
     )
@@ -591,8 +741,12 @@ def print_repo_market_diagnostics() -> None:
         repo_market_statistics()
     )
 
+    fed_repo = (
+        fed_repo_operations_statistics()
+    )
 
     print()
+
     print(
         "Liquidity Monitor — "
         "Repo Market Internals"
@@ -601,14 +755,16 @@ def print_repo_market_diagnostics() -> None:
     print("=" * 72)
 
     print()
+
     print(
         f"Observation Date: "
         f"{snapshot.observation_date}"
     )
 
-
     print()
+
     print("Reference Rates")
+
     print("-" * 72)
 
     print(
@@ -631,11 +787,11 @@ def print_repo_market_diagnostics() -> None:
         f"OBFR: {snapshot.obfr:.2f}%"
     )
 
-
     print()
-    print("Historical Diagnostics")
-    print("-" * 72)
 
+    print("Historical Diagnostics")
+
+    print("-" * 72)
 
     _print_context(
         "SOFR - EFFR",
@@ -672,6 +828,62 @@ def print_repo_market_diagnostics() -> None:
         statistics.sofr_volume,
         units="$B",
     )
+
+    print()
+
+    print(
+        "Federal Reserve Repo Operations — Supporting"
+    )
+
+    print("-" * 72)
+
+    print(
+        f"Observation date:       "
+        f"{fed_repo.observation_date}"
+    )
+
+    print(
+        f"Current usage:          "
+        f"${fed_repo.current_billions:.3f}B"
+    )
+
+    if fed_repo.previous_billions is not None:
+
+        print(
+            f"Previous usage:         "
+            f"${fed_repo.previous_billions:.3f}B"
+        )
+
+    print(
+        f"5-observation maximum:  "
+        f"${fed_repo.maximum_5_observations_billions:.3f}B"
+    )
+
+    print(
+        f"20-observation maximum: "
+        f"${fed_repo.maximum_20_observations_billions:.3f}B"
+    )
+
+    print(
+        f"Positive obs, last 20:  "
+        f"{fed_repo.positive_observations_20}"
+    )
+
+    print(
+        f">= $1B, last 20:        "
+        f"{fed_repo.observations_ge_1b_20}"
+    )
+
+    print(
+        f">= $5B, last 20:        "
+        f"{fed_repo.observations_ge_5b_20}"
+    )
+
+    print(
+        f">= $10B, last 20:       "
+        f"{fed_repo.observations_ge_10b_20}"
+    )
+
 
 
 if __name__ == "__main__":
