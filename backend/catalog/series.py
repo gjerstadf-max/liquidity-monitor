@@ -603,6 +603,35 @@ BANK_FUNDING_SERIES = (
     ),
 
 )
+GLOBAL_DOLLAR_FUNDING_SERIES = (
+
+    SeriesDefinition(
+        symbol="central_bank_liquidity_swaps",
+        name="Federal Reserve Central Bank Liquidity Swaps",
+        category="global_dollar_funding",
+        frequency="Weekly",
+        units="Billions of U.S. Dollars",
+        provider="fred",
+        external_id="SWPT",
+        source_units="Millions of U.S. Dollars",
+        transform="millions_to_billions",
+        role="core",
+    ),
+
+    SeriesDefinition(
+        symbol="fima_repo",
+        name="FIMA Repo Facility",
+        category="global_dollar_funding",
+        frequency="Weekly",
+        units="Billions of U.S. Dollars",
+        provider="fred",
+        external_id="H41RESPPALGTRFNWW",
+        source_units="Millions of U.S. Dollars",
+        transform="millions_to_billions",
+        role="supporting",
+    ),
+
+)
 
 # =============================================================
 # COMPLETE CATALOG
@@ -627,6 +656,8 @@ SERIES_CATALOG: tuple[
     *COMMERCIAL_PAPER_SERIES,
 
     *BANK_FUNDING_SERIES,
+
+    *GLOBAL_DOLLAR_FUNDING_SERIES,
 )
 
 

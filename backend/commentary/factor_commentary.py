@@ -472,3 +472,43 @@ def bank_funding_watch(
         "reliance on Federal Reserve liquidity indicating acute "
         "banking-system funding pressure."
     )
+
+def global_dollar_funding_what_matters() -> str:
+    return (
+        "Global dollar funding conditions show whether foreign "
+        "institutions are making unusual use of Federal Reserve "
+        "dollar-liquidity backstops. Central-bank swap usage is "
+        "the core systemic measure, while FIMA repo provides "
+        "supporting evidence of foreign-official liquidity demand."
+    )
+
+
+def global_dollar_funding_watch(
+    verdict: str,
+) -> str:
+
+    if verdict == "Normal":
+        return (
+            "Global dollar funding remains orderly, with minimal "
+            "use of Federal Reserve dollar-liquidity backstops."
+        )
+
+    if verdict == "Watch":
+        return (
+            "Global dollar funding conditions warrant monitoring "
+            "as Federal Reserve liquidity facilities show unusual "
+            "but still contained demand."
+        )
+
+    if verdict == "Elevated":
+        return (
+            "Global dollar funding pressure is elevated, with "
+            "meaningful central-bank swap usage indicating tighter "
+            "offshore dollar-funding conditions."
+        )
+
+    return (
+        "Global dollar funding is severely stressed, with very "
+        "large central-bank swap usage indicating acute offshore "
+        "dollar-liquidity demand."
+    )

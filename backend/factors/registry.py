@@ -48,12 +48,16 @@ from backend.commentary.factor_commentary import (
     commercial_paper_watch,
     bank_funding_what_matters,
     bank_funding_watch,
+    global_dollar_funding_what_matters,
+    global_dollar_funding_watch,
 )
 
 from backend.assessments.bank_funding import (
     assess_bank_funding,
 )
-
+from backend.assessments.global_dollar_funding import (
+    assess_global_dollar_funding,
+)
 
 # =============================================================
 # TYPES
@@ -179,6 +183,15 @@ FACTOR_REGISTRY: tuple[
             bank_funding_what_matters,
         watch_builder=
             bank_funding_watch,
+    ),
+    FactorDefinition(
+        key="global_dollar_funding",
+        display_name="Global Dollar Funding",
+        assessor=assess_global_dollar_funding,
+        what_matters_builder=
+            global_dollar_funding_what_matters,
+        watch_builder=
+            global_dollar_funding_watch,
     ),
 
 )
