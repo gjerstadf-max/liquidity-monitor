@@ -86,6 +86,7 @@ def test_expected_five_factors_registered():
         "repo_market",
         "treasury_intermediation",
         "treasury_market_activity",
+        "commercial_paper",
     }
 
     actual = {

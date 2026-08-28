@@ -487,6 +487,70 @@ TREASURY_MARKET_ACTIVITY_SERIES = (
 )
 
 
+COMMERCIAL_PAPER_SERIES = (
+
+    SeriesDefinition(
+        symbol="cp_aa_nonfinancial_30d",
+        name="30-Day AA Nonfinancial Commercial Paper Rate",
+        category="commercial_paper",
+        frequency="Daily",
+        units="Percent",
+        provider="fred",
+        external_id="RIFSPPNAAD30NB",
+        source_units="Percent",
+        role="core",
+    ),
+
+    SeriesDefinition(
+        symbol="cp_a2p2_nonfinancial_30d",
+        name="30-Day A2/P2 Nonfinancial Commercial Paper Rate",
+        category="commercial_paper",
+        frequency="Daily",
+        units="Percent",
+        provider="fred",
+        external_id="RIFSPPNA2P2D30NB",
+        source_units="Percent",
+        role="core",
+    ),
+
+    SeriesDefinition(
+        symbol="cp_aa_financial_30d",
+        name="30-Day AA Financial Commercial Paper Rate",
+        category="commercial_paper",
+        frequency="Daily",
+        units="Percent",
+        provider="fred",
+        external_id="RIFSPPFAAD30NB",
+        source_units="Percent",
+        role="supporting",
+    ),
+
+    SeriesDefinition(
+        symbol="cp_financial_outstanding",
+        name="Financial Commercial Paper Outstanding",
+        category="commercial_paper",
+        frequency="Weekly",
+        units="Billions of Dollars",
+        provider="fred",
+        external_id="FINCP",
+        source_units="Billions of Dollars",
+        role="supporting",
+    ),
+
+    SeriesDefinition(
+        symbol="cp_nonfinancial_outstanding",
+        name="Nonfinancial Commercial Paper Outstanding",
+        category="commercial_paper",
+        frequency="Weekly",
+        units="Billions of Dollars",
+        provider="fred",
+        external_id="NFINCP",
+        source_units="Billions of Dollars",
+        role="supporting",
+    ),
+
+)
+
 # =============================================================
 # COMPLETE CATALOG
 # =============================================================
@@ -506,6 +570,8 @@ SERIES_CATALOG: tuple[
     *TREASURY_INTERMEDIATION_SERIES,
 
     *TREASURY_MARKET_ACTIVITY_SERIES,
+
+    *COMMERCIAL_PAPER_SERIES,
 )
 
 

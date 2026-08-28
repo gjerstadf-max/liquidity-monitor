@@ -15,6 +15,7 @@ EXPECTED_FACTOR_KEYS = {
     "repo_market",
     "treasury_intermediation",
     "treasury_market_activity",
+    "commercial_paper",
 }
 
 
@@ -30,7 +31,7 @@ def test_assessment_engine_builds_all_registered_factors():
     }
 
     assert keys == EXPECTED_FACTOR_KEYS
-    assert len(assessment.factors) == 5
+    assert len(assessment.factors) == 6
 
     assert assessment.overall_verdict in {
         "Normal",
@@ -68,7 +69,7 @@ def test_daily_snapshot_preserves_all_factors():
     assert keys == EXPECTED_FACTOR_KEYS
     assert len(
         snapshot.assessment.factors
-    ) == 5
+    ) == 6
 
     assert snapshot.morning_brief is not None
 

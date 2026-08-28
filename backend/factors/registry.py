@@ -39,7 +39,14 @@ from backend.commentary.factor_commentary import (
     treasury_market_activity_watch,
     treasury_market_activity_what_matters,
 )
+from backend.assessments.commercial_paper import (
+    assess_commercial_paper,
+)
 
+from backend.commentary.factor_commentary import (
+    commercial_paper_what_matters,
+    commercial_paper_watch,
+)
 
 # =============================================================
 # TYPES
@@ -146,6 +153,16 @@ FACTOR_REGISTRY: tuple[
             treasury_market_activity_what_matters,
         watch_builder=
             treasury_market_activity_watch,
+    ),
+
+    FactorDefinition(
+        key="commercial_paper",
+        display_name="Commercial Paper",
+        assessor=assess_commercial_paper,
+        what_matters_builder=
+            commercial_paper_what_matters,
+        watch_builder=
+            commercial_paper_watch,
     ),
 
 )

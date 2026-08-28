@@ -394,3 +394,41 @@ def treasury_market_activity_watch(
         "supply, deterioration in auction demand, or a "
         "rise in primary-dealer take-down."
     )
+def commercial_paper_what_matters() -> str:
+    return (
+        "Commercial-paper funding conditions provide a direct view "
+        "into unsecured short-term corporate financing. The primary "
+        "diagnostic is the premium paid by lower-quality A2/P2 "
+        "nonfinancial issuers relative to AA nonfinancial issuers."
+    )
+
+
+def commercial_paper_watch(
+    verdict: str,
+) -> str:
+
+    if verdict == "Normal":
+        return (
+            "Commercial-paper funding remains orderly, with the "
+            "lower-quality funding premium well below levels "
+            "historically associated with meaningful market stress."
+        )
+
+    if verdict == "Watch":
+        return (
+            "Commercial-paper funding conditions warrant monitoring "
+            "as the lower-quality funding premium has become elevated."
+        )
+
+    if verdict == "Elevated":
+        return (
+            "Commercial-paper funding pressure is elevated, indicating "
+            "meaningful deterioration in unsecured short-term "
+            "corporate financing conditions."
+        )
+
+    return (
+        "Commercial-paper funding is severely stressed, with the "
+        "lower-quality funding premium at levels historically "
+        "associated with major funding-market disruption."
+    )
