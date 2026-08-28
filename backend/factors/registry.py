@@ -46,7 +46,14 @@ from backend.assessments.commercial_paper import (
 from backend.commentary.factor_commentary import (
     commercial_paper_what_matters,
     commercial_paper_watch,
+    bank_funding_what_matters,
+    bank_funding_watch,
 )
+
+from backend.assessments.bank_funding import (
+    assess_bank_funding,
+)
+
 
 # =============================================================
 # TYPES
@@ -163,6 +170,15 @@ FACTOR_REGISTRY: tuple[
             commercial_paper_what_matters,
         watch_builder=
             commercial_paper_watch,
+    ),
+    FactorDefinition(
+        key="bank_funding",
+        display_name="Bank Funding",
+        assessor=assess_bank_funding,
+        what_matters_builder=
+            bank_funding_what_matters,
+        watch_builder=
+            bank_funding_watch,
     ),
 
 )

@@ -432,3 +432,43 @@ def commercial_paper_watch(
         "lower-quality funding premium at levels historically "
         "associated with major funding-market disruption."
     )
+def bank_funding_what_matters() -> str:
+    return (
+        "Bank funding conditions show whether banks are relying "
+        "more heavily on Federal Reserve liquidity or experiencing "
+        "unusual deposit pressure. Primary credit is the core "
+        "stress measure, while deposit migration and funding "
+        "substitution provide confirmation."
+    )
+
+
+def bank_funding_watch(
+    verdict: str,
+) -> str:
+
+    if verdict == "Normal":
+        return (
+            "Bank funding conditions remain orderly, with limited "
+            "reliance on Federal Reserve primary credit and no "
+            "significant deposit-flight signal."
+        )
+
+    if verdict == "Watch":
+        return (
+            "Bank funding conditions warrant monitoring as either "
+            "central-bank borrowing or deposit behavior shows "
+            "early signs of pressure."
+        )
+
+    if verdict == "Elevated":
+        return (
+            "Bank funding pressure is elevated, with meaningful "
+            "liquidity demand or deposit stress indicating tighter "
+            "bank funding conditions."
+        )
+
+    return (
+        "Bank funding is severely stressed, with unusually heavy "
+        "reliance on Federal Reserve liquidity indicating acute "
+        "banking-system funding pressure."
+    )

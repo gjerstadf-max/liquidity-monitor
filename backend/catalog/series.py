@@ -551,6 +551,59 @@ COMMERCIAL_PAPER_SERIES = (
 
 )
 
+BANK_FUNDING_SERIES = (
+
+    SeriesDefinition(
+        symbol="fed_primary_credit",
+        name="Federal Reserve Primary Credit",
+        category="bank_funding",
+        frequency="Weekly",
+        units="Billions of U.S. Dollars",
+        provider="fred",
+        external_id="WLCFLPCL",
+        source_units="Millions of U.S. Dollars",
+        transform="millions_to_billions",
+        role="core",
+    ),
+
+    SeriesDefinition(
+        symbol="bank_deposits_small",
+        name="Deposits at Small Domestically Chartered Commercial Banks",
+        category="bank_funding",
+        frequency="Weekly",
+        units="Billions of U.S. Dollars",
+        provider="fred",
+        external_id="DPSSCBW027SBOG",
+        source_units="Billions of U.S. Dollars",
+        role="core",
+    ),
+
+    SeriesDefinition(
+        symbol="bank_deposits_large",
+        name="Deposits at Large Domestically Chartered Commercial Banks",
+        category="bank_funding",
+        frequency="Weekly",
+        units="Billions of U.S. Dollars",
+        provider="fred",
+        external_id="DPSLCBW027SBOG",
+        source_units="Billions of U.S. Dollars",
+        role="supporting",
+    ),
+
+    SeriesDefinition(
+        symbol="bank_large_time_deposits_small",
+        name="Large Time Deposits at Small Domestically Chartered Commercial Banks",
+        category="bank_funding",
+        frequency="Weekly",
+        units="Billions of U.S. Dollars",
+        provider="fred",
+        external_id="LTDSCBW027SBOG",
+        source_units="Billions of U.S. Dollars",
+        role="supporting",
+    ),
+
+)
+
 # =============================================================
 # COMPLETE CATALOG
 # =============================================================
@@ -572,6 +625,8 @@ SERIES_CATALOG: tuple[
     *TREASURY_MARKET_ACTIVITY_SERIES,
 
     *COMMERCIAL_PAPER_SERIES,
+
+    *BANK_FUNDING_SERIES,
 )
 
 

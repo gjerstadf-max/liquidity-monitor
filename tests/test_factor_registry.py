@@ -79,7 +79,7 @@ def test_all_registered_factors_build_assessments():
         assert assessment.summary.strip()
 
 
-def test_expected_five_factors_registered():
+def test_expected_seven_factors_registered():
     expected = {
         "funding",
         "system_liquidity",
@@ -87,6 +87,7 @@ def test_expected_five_factors_registered():
         "treasury_intermediation",
         "treasury_market_activity",
         "commercial_paper",
+        "bank_funding",
     }
 
     actual = {
