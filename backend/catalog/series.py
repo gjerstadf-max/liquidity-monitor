@@ -268,7 +268,7 @@ SYSTEM_LIQUIDITY_SERIES = (
             "Federal Reserve Banks"
         ),
         category="Funding",
-        frequency="Daily",
+        frequency="Weekly",
         units="USD Billions",
         provider="fred",
         external_id="WRESBAL",
@@ -281,7 +281,7 @@ SYSTEM_LIQUIDITY_SERIES = (
         symbol="tga",
         name="U.S. Treasury General Account",
         category="Funding",
-        frequency="Daily",
+        frequency="Weekly",
         units="USD Billions",
         provider="fred",
         external_id="WDTGAL",
@@ -305,6 +305,7 @@ SYSTEM_LIQUIDITY_SERIES = (
         transform="dollars_to_billions",
         role="core",
     ),
+
 )
 
 
