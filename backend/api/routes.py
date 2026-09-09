@@ -332,6 +332,12 @@ def get_snapshot():
             "what_to_watch":
                 snapshot.morning_brief.what_to_watch,
         },
+        # =============================================================
+        # INTELLIGENT LIQUIDITY INTERPRETATION
+        # =============================================================
+
+        "liquidity_interpretation":
+            snapshot.liquidity_interpretation,
 
         # -----------------------------------------------------
         # MARKET NEWS / NARRATIVE

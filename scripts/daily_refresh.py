@@ -5,9 +5,129 @@ from datetime import (
     timezone,
 )
 
+from backend.assessments.engine import (
+    build_liquidity_assessment,
+)
+
+from backend.commentary.interpretation_storage import (
+    save_liquidity_interpretation,
+)
+
+from backend.commentary.liquidity_interpreter import (
+    interpret_liquidity,
+)
+
 from backend.services.market_data_refresh import (
     refresh_market_data,
 )
+
+
+# =============================================================
+# LIQUIDITY INTERPRETATION
+# =============================================================
+
+
+def _refresh_liquidity_interpretation() -> dict[str, object]:
+    """
+    Build and store the current AI liquidity interpretation.
+
+    Interpretation is downstream of the deterministic market-data,
+    metric, signal and assessment layers.
+
+    Failure here must never cause the market-data refresh itself
+    to fail.
+
+    If the model call falls back to deterministic commentary, do
+    not overwrite the most recent successfully generated AI
+    interpretation.
+    """
+
+    try:
+
+        assessment = (
+            build_liquidity_assessment()
+        )
+
+        interpretation = (
+            interpret_liquidity(
+                assessment=assessment
+            )
+        )
+
+        if interpretation.fallback_used:
+
+            print()
+
+            print(
+                "Liquidity interpretation:"
+                " AI unavailable — fallback generated."
+            )
+
+            print(
+                "Stored AI interpretation was not overwritten."
+            )
+
+            return {
+                "status": "fallback",
+                "saved": False,
+                "model": interpretation.model,
+            }
+
+        saved = (
+            save_liquidity_interpretation(
+                interpretation=
+                    interpretation,
+                assessment=
+                    assessment,
+            )
+        )
+
+        print()
+
+        print(
+            "Liquidity interpretation:"
+            " generated and stored."
+        )
+
+        print(
+            "Overall verdict: "
+            f"{saved['overall_verdict']}"
+        )
+
+        print(
+            "Overall confidence: "
+            f"{saved['overall_confidence']}"
+        )
+
+        print(
+            "Model: "
+            f"{saved['model']}"
+        )
+
+        return {
+            "status": "stored",
+            "saved": True,
+            **saved,
+        }
+
+    except Exception as exc:
+
+        print()
+
+        print(
+            "Liquidity interpretation refresh failed: "
+            f"{exc}"
+        )
+
+        print(
+            "Market-data refresh remains valid."
+        )
+
+        return {
+            "status": "failed",
+            "saved": False,
+            "error": str(exc),
+        }
 
 
 # =============================================================
@@ -17,14 +137,19 @@ from backend.services.market_data_refresh import (
 
 def daily_refresh() -> None:
     """
-    Run the Liquidity Monitor production
-    market-data refresh.
+    Run the Liquidity Monitor production refresh.
 
-    Individual providers and their catalog-defined
-    series are managed by refresh_market_data().
+    Sequence:
 
-    Metrics, signals, assessments and commentary are
-    calculated from the database when requested.
+        1. Refresh market data
+        2. Build deterministic eight-factor assessment
+        3. Generate AI cross-factor interpretation
+        4. Store successful interpretation
+
+    The deterministic framework remains authoritative.
+
+    AI interpretation is an explanatory layer only and cannot
+    cause the market-data refresh to fail.
     """
 
     started_at = datetime.now(
@@ -81,6 +206,14 @@ def daily_refresh() -> None:
         raise
 
     # ---------------------------------------------------------
+    # INTELLIGENT INTERPRETATION
+    # ---------------------------------------------------------
+
+    interpretation_result = (
+        _refresh_liquidity_interpretation()
+    )
+
+    # ---------------------------------------------------------
     # COMPLETE
     # ---------------------------------------------------------
 
@@ -118,6 +251,7 @@ def daily_refresh() -> None:
         "Observations inserted: "
         f"{result.inserted}"
     )
+
     print()
 
     print(
@@ -143,6 +277,18 @@ def daily_refresh() -> None:
     print(
         "Observations skipped: "
         f"{result.skipped}"
+    )
+
+    print()
+
+    print(
+        "Interpretation status: "
+        f"{interpretation_result['status']}"
+    )
+
+    print(
+        "Interpretation stored: "
+        f"{interpretation_result['saved']}"
     )
 
     print()

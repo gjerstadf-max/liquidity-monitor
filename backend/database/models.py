@@ -272,6 +272,101 @@ class NewsSnapshot(Base):
     )
 
 # =============================================================
+# LIQUIDITY INTERPRETATION SNAPSHOTS
+# =============================================================
+
+
+class LiquidityInterpretationSnapshot(Base):
+    """
+    One stored AI liquidity interpretation per business day.
+
+    Both the deterministic factor context supplied to the model
+    and the model's structured interpretation are retained.
+
+    This preserves an audit trail showing exactly what the
+    interpretation layer saw when generating its commentary.
+    """
+
+    __tablename__ = "liquidity_interpretation_snapshots"
+
+    id: Mapped[int] = mapped_column(
+        primary_key=True
+    )
+
+    snapshot_date: Mapped[date] = mapped_column(
+        Date,
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+
+    overall_verdict: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+
+    overall_confidence: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+
+    headline: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    overall_comment: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    model: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+    )
+
+    interpreter_version: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        default="v1",
+    )
+
+    fallback_used: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+    )
+
+    context_json: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    payload_json: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+    )
+
+
+# =============================================================
 # TREASURY AUCTIONS
 # =============================================================
 

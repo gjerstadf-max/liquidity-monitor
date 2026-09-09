@@ -7,34 +7,46 @@ from typing import Any
 from backend.assessments.engine import (
     build_liquidity_assessment,
 )
+
 from backend.assessments.models import (
     LiquidityAssessment,
 )
+
+from backend.commentary.interpretation_storage import (
+    load_latest_liquidity_interpretation,
+)
+
 from backend.commentary.morning_brief import (
     MorningBrief,
     generate_morning_brief,
 )
+
 from backend.metrics.funding import (
     FundingSnapshot,
     FundingSpreadStatistics,
     funding_spread_statistics,
     latest_funding_snapshot,
 )
+
 from backend.metrics.system_liquidity import (
     SystemLiquidityHistoryMetrics,
     SystemLiquidityMetrics,
     system_liquidity_history_metrics,
     system_liquidity_metrics,
 )
+
 from backend.news.context import (
     build_market_context,
 )
+
 from backend.news.storage import (
     load_latest_market_narrative,
 )
+
 from backend.services.freshness import (
     DataFreshness,
     funding_data_freshness,
+    system_liquidity_data_freshness,
 )
 
 
@@ -51,6 +63,9 @@ class DailySnapshot:
 
     Business logic remains in the underlying metrics,
     signals, assessments and commentary modules.
+
+    Stored AI interpretation is presentation commentary only.
+    Building a DailySnapshot never calls OpenAI.
     """
 
     generated_at: datetime
@@ -58,17 +73,125 @@ class DailySnapshot:
     assessment: LiquidityAssessment
 
     funding: FundingSnapshot
+
     spread_statistics: FundingSpreadStatistics
 
     system_liquidity: SystemLiquidityMetrics
+
     system_liquidity_history: SystemLiquidityHistoryMetrics
 
     morning_brief: MorningBrief
 
     funding_freshness: DataFreshness
 
+    system_liquidity_freshness: DataFreshness
+
+    liquidity_interpretation: dict[str, Any]
+
     market_narrative: dict[str, Any]
+
     market_context: dict[str, Any]
+
+
+# =============================================================
+# EMPTY STORED INTERPRETATION
+# =============================================================
+
+
+def _empty_liquidity_interpretation(
+    status: str = "No stored interpretation",
+) -> dict[str, Any]:
+    """
+    Return a predictable empty interpretation object.
+
+    This preserves a stable interface for the API and homepage
+    when no successful AI interpretation has yet been stored.
+    """
+
+    return {
+        "available": False,
+
+        "status":
+            status,
+
+        "snapshot_date":
+            None,
+
+        "generated_at":
+            None,
+
+        "overall_verdict":
+            None,
+
+        "overall_confidence":
+            None,
+
+        "headline":
+            None,
+
+        "overall_comment":
+            None,
+
+        "primary_drivers":
+            [],
+
+        "counter_evidence":
+            [],
+
+        "what_to_watch":
+            [],
+
+        "model":
+            None,
+
+        "interpreter_version":
+            None,
+
+        "fallback_used":
+            False,
+    }
+
+
+# =============================================================
+# STORED LIQUIDITY INTERPRETATION
+# =============================================================
+
+
+def _load_liquidity_interpretation(
+) -> dict[str, Any]:
+    """
+    Load the newest successfully stored liquidity
+    interpretation.
+
+    This performs no external API or model call.
+    """
+
+    try:
+
+        interpretation = (
+            load_latest_liquidity_interpretation()
+        )
+
+        if interpretation is None:
+
+            return (
+                _empty_liquidity_interpretation()
+            )
+
+        return interpretation
+
+    except Exception as exc:
+
+        print(
+            "Stored liquidity interpretation unavailable: "
+            f"{exc}"
+        )
+
+        return (
+            _empty_liquidity_interpretation(
+                status="Database unavailable"
+            )
+        )
 
 
 # =============================================================
@@ -165,13 +288,17 @@ def build_daily_snapshot(
         1. Funding metrics
         2. System-liquidity metrics
         3. Registered-factor liquidity assessment
-        4. Morning Brief
+        4. Deterministic Morning Brief
         5. Data freshness
-        6. Stored news narrative
-        7. Simplified Market Context
+        6. Stored AI liquidity interpretation
+        7. Stored news narrative
+        8. Simplified Market Context
 
-    News remains contextual only and does not influence
+    Neither the stored AI interpretation nor news can influence
     quantitative metrics, signals or assessments.
+
+    No OpenAI or external news request occurs while building
+    this snapshot.
     """
 
     # =========================================================
@@ -186,7 +313,6 @@ def build_daily_snapshot(
         funding_spread_statistics()
     )
 
-
     # =========================================================
     # SYSTEM LIQUIDITY
     # =========================================================
@@ -199,29 +325,16 @@ def build_daily_snapshot(
         system_liquidity_history_metrics()
     )
 
-
     # =========================================================
-    # QUALITATIVE ASSESSMENT
-    # =========================================================
-    #
-    # The assessment engine now contains:
-    #
-    #   1. Funding Conditions
-    #   2. System Liquidity
-    #   3. Repo Market Pressure
-    #   4. Treasury Intermediation
-    #   5. Treasury Market Activity
-    #
-    # No composite numeric score is used.
+    # DETERMINISTIC QUALITATIVE ASSESSMENT
     # =========================================================
 
     assessment = (
         build_liquidity_assessment()
     )
 
-
     # =========================================================
-    # MORNING BRIEF
+    # DETERMINISTIC MORNING BRIEF
     # =========================================================
     #
     # Reuse the assessment we just calculated rather than
@@ -235,7 +348,6 @@ def build_daily_snapshot(
         )
     )
 
-
     # =========================================================
     # DATA FRESHNESS
     # =========================================================
@@ -246,6 +358,27 @@ def build_daily_snapshot(
         )
     )
 
+    system_liquidity_freshness = (
+        system_liquidity_data_freshness(
+            system_liquidity.observation_date
+        )
+    )
+
+    # =========================================================
+    # STORED INTELLIGENT INTERPRETATION
+    # =========================================================
+    #
+    # IMPORTANT:
+    #
+    # This only reads the newest successfully stored result.
+    # No OpenAI call occurs here.
+    #
+    # Interpretation generation belongs to daily_refresh.py.
+    # =========================================================
+
+    liquidity_interpretation = (
+        _load_liquidity_interpretation()
+    )
 
     # =========================================================
     # STORED MARKET NEWS
@@ -273,7 +406,6 @@ def build_daily_snapshot(
             )
         )
 
-
     # =========================================================
     # SIMPLIFIED MARKET CONTEXT
     # =========================================================
@@ -288,7 +420,6 @@ def build_daily_snapshot(
             market_narrative
         )
     )
-
 
     # =========================================================
     # FINAL SNAPSHOT
@@ -321,9 +452,15 @@ def build_daily_snapshot(
         funding_freshness=
             funding_freshness,
 
+        liquidity_interpretation=
+            liquidity_interpretation,
+
         market_narrative=
             market_narrative,
 
         market_context=
             market_context,
+
+        system_liquidity_freshness=
+            system_liquidity_freshness,
     )

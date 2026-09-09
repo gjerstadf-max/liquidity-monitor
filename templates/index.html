@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 
 <head>
@@ -14,7 +13,6 @@
     <title>
         Liquidity Monitor
     </title>
-
 
     <link
         rel="stylesheet"
@@ -110,62 +108,75 @@
         <section class="assessment">
 
             <div class="assessment-label">
-
                 Current Liquidity Assessment
-
             </div>
 
 
             <div class="score-row">
 
                 <div class="condition">
-
                     {{ snapshot.assessment.overall_verdict }}
-
                 </div>
 
             </div>
 
 
-            <p>
-
-                {{ snapshot.assessment.summary }}
-
-            </p>
-
-
             <div class="confidence">
-
                 Confidence:
-
                 {{ snapshot.assessment.confidence }}
-
             </div>
+
+
+            {% if snapshot.liquidity_interpretation["available"] %}
+
+                <div class="headline">
+                    {{ snapshot.liquidity_interpretation["headline"] }}
+                </div>
+
+
+                <p>
+                    {{ snapshot.liquidity_interpretation["overall_comment"] }}
+                </p>
+
+
+                <div class="section-subtitle">
+
+                    Cross-factor interpretation generated
+                    {{ snapshot.liquidity_interpretation["snapshot_date"] }}.
+
+                    The quantitative factor assessments and
+                    overall verdict remain deterministic.
+
+                </div>
+
+            {% else %}
+
+                <p>
+                    {{ snapshot.assessment.summary }}
+                </p>
+
+            {% endif %}
 
 
             <div class="status-row">
 
                 <div>
-
                     Latest funding data:
 
                     <strong>
                         {{ snapshot.funding.observation_date }}
                     </strong>
-
                 </div>
 
 
                 <div>
-
                     Latest system data:
 
                     <strong>
                         {{ snapshot.system_liquidity.observation_date }}
                     </strong>
-
                 </div>
-
+                
 
                 <div
                     class="
@@ -178,41 +189,50 @@
                 >
 
                     Funding status:
-
                     {{ snapshot.funding_freshness.label }}
 
                 </div>
 
+                <div
+                    class="
+                        {% if snapshot.system_liquidity_data_freshness.is_current %}
+                            status-current
+                        {% else %}
+                            status-stale
+                        {% endif %}
+                    "
+                >
+                    System status:
+                    {{ snapshot.system_liquidity_freshness.label }}
             </div>
 
-        </section>
+        </div>
+
+    </section>
 
 
 
         <!-- ==================================================
-             MORNING BRIEF
+             CROSS-FACTOR INTERPRETATION
              ================================================== -->
 
+
+        {% if snapshot.liquidity_interpretation["available"] %}
 
         <section class="brief">
 
             <h2>
-                Morning Liquidity Brief
+                Cross-Factor Interpretation
             </h2>
 
 
-            <div class="headline">
+            <div class="section-subtitle">
 
-                {{ snapshot.morning_brief.headline }}
+                How the eight liquidity factors interact,
+                where pressure is concentrated, and whether
+                it is transmitting across markets.
 
             </div>
-
-
-            <p>
-
-                {{ snapshot.morning_brief.summary }}
-
-            </p>
 
 
             <div class="brief-grid">
@@ -221,11 +241,11 @@
                 <div class="brief-box">
 
                     <h3>
-                        What Matters
+                        Primary Drivers
                     </h3>
 
 
-                    {% for item in snapshot.morning_brief.what_matters %}
+                    {% for item in snapshot.liquidity_interpretation["primary_drivers"] %}
 
                         <p>
                             {{ item }}
@@ -239,11 +259,11 @@
                 <div class="brief-box">
 
                     <h3>
-                        What To Watch
+                        Counter-Evidence
                     </h3>
 
 
-                    {% for item in snapshot.morning_brief.what_to_watch %}
+                    {% for item in snapshot.liquidity_interpretation["counter_evidence"] %}
 
                         <p>
                             {{ item }}
@@ -256,7 +276,40 @@
 
             </div>
 
+
+            <div class="brief-box">
+
+                <h3>
+                    What To Watch
+                </h3>
+
+
+                {% for item in snapshot.liquidity_interpretation["what_to_watch"] %}
+
+                    <p>
+                        {{ item }}
+                    </p>
+
+                {% endfor %}
+
+            </div>
+
+
+            <div class="section-subtitle">
+
+                Interpretation model:
+                {{ snapshot.liquidity_interpretation["model"] }}
+
+                &nbsp; • &nbsp;
+
+                Version:
+                {{ snapshot.liquidity_interpretation["interpreter_version"] }}
+
+            </div>
+
         </section>
+
+        {% endif %}
 
 
 
@@ -275,6 +328,7 @@
             <div class="section-subtitle">
 
                 Selected external developments only.
+
                 Market context does not determine the
                 quantitative liquidity assessment.
 
@@ -286,9 +340,7 @@
                 <div class="brief-box">
 
                     <p>
-
                         {{ snapshot.market_context["summary"] }}
-
                     </p>
 
 
@@ -322,16 +374,11 @@
 
                 </div>
 
-
             {% else %}
 
-
                 <p>
-
                     {{ snapshot.market_context["summary"] }}
-
                 </p>
-
 
             {% endif %}
 
@@ -353,8 +400,8 @@
 
             <div class="section-subtitle">
 
-                Independent assessments underlying the
-                overall liquidity conclusion
+                Eight independent deterministic assessments
+                underlying the overall liquidity conclusion.
 
             </div>
 
@@ -362,45 +409,39 @@
             <div class="cards">
 
 
-                <!-- FUNDING CONDITIONS -->
-
-
                 {% for factor in snapshot.assessment.factors %}
 
-             <div class="card">
+                    <div class="card">
 
-                <div class="card-title">
+                        <div class="card-title">
+                            {{ factor.display_name }}
+                        </div>
 
-                {{ factor.display_name }}
 
-            </div>
+                        <div class="card-value">
+                            {{ factor.assessment.verdict }}
+                        </div>
 
-            <div class="card-value">
 
-                {{ factor.assessment.verdict }}
+                        <div class="card-change">
+                            {{ factor.assessment.summary }}
+                        </div>
 
-            </div>
 
-            <div class="card-change">
+                        <div class="card-date">
 
-                {{ factor.assessment.summary }}
+                            Confidence:
+                            {{ factor.assessment.confidence }}
 
-        </div>
+                        </div>
 
-        <div class="card-date">
+                    </div>
 
-            Confidence:
-            {{ factor.assessment.confidence }}
-
-        </div>
-
-    </div>
-
-{% endfor %}
+                {% endfor %}
 
 
 
-                <!-- OVERALL -->
+                <!-- OVERALL CONCLUSION -->
 
 
                 <div class="card">
@@ -409,18 +450,19 @@
                         Overall Conclusion
                     </div>
 
+
                     <div class="card-value">
-
                         {{ snapshot.assessment.overall_verdict }}
-
                     </div>
+
 
                     <div class="card-change">
 
-                        Qualitative synthesis of the four
+                        Qualitative synthesis of the eight
                         independent liquidity factors
 
                     </div>
+
 
                     <div class="card-date">
 
@@ -453,7 +495,6 @@
             <div class="section-subtitle">
 
                 Latest common SOFR and EFFR observation:
-
                 {{ snapshot.funding.observation_date }}
 
             </div>
@@ -462,11 +503,15 @@
             <div class="cards">
 
 
+                <!-- SOFR -->
+
+
                 <div class="card">
 
                     <div class="card-title">
                         SOFR
                     </div>
+
 
                     <div class="card-value">
 
@@ -477,6 +522,7 @@
                         }}%
 
                     </div>
+
 
                     <div class="card-change">
 
@@ -489,6 +535,7 @@
                         bp from prior day
 
                     </div>
+
 
                     <div class="card-date">
 
@@ -506,11 +553,15 @@
 
 
 
+                <!-- EFFR -->
+
+
                 <div class="card">
 
                     <div class="card-title">
                         EFFR
                     </div>
+
 
                     <div class="card-value">
 
@@ -521,6 +572,7 @@
                         }}%
 
                     </div>
+
 
                     <div class="card-change">
 
@@ -533,6 +585,7 @@
                         bp from prior day
 
                     </div>
+
 
                     <div class="card-date">
 
@@ -550,18 +603,21 @@
 
 
 
+                <!-- SOFR - EFFR -->
+
+
                 <div class="card">
 
                     <div class="card-title">
                         SOFR − EFFR
                     </div>
 
+
                     <div class="card-value">
 
                         {{
                             "%+.0f"|format(
-                                snapshot.funding
-                                .spread_basis_points
+                                snapshot.funding.spread_basis_points
                             )
                         }}
 
@@ -569,12 +625,12 @@
 
                     </div>
 
+
                     <div class="card-change">
 
                         {{
                             "%+.0f"|format(
-                                snapshot.funding
-                                .spread_change_bp
+                                snapshot.funding.spread_change_bp
                             )
                         }}
 
@@ -582,14 +638,14 @@
 
                     </div>
 
+
                     <div class="card-date">
 
                         Previous:
 
                         {{
                             "%+.0f"|format(
-                                snapshot.funding
-                                .previous_spread_basis_points
+                                snapshot.funding.previous_spread_basis_points
                             )
                         }}
 
@@ -601,21 +657,25 @@
 
 
 
+                <!-- FUNDING VERDICT -->
+
+
                 <div class="card">
 
                     <div class="card-title">
                         Funding Verdict
                     </div>
 
+
                     <div class="card-value">
-
                         {{ snapshot.assessment.funding.verdict }}
-
                     </div>
+
 
                     <div class="card-change">
                         Historically contextualized
                     </div>
+
 
                     <div class="card-date">
 
@@ -634,7 +694,7 @@
 
 
         <!-- ==================================================
-             FUNDING HISTORY
+             HISTORICAL FUNDING CONTEXT
              ================================================== -->
 
 
@@ -649,10 +709,7 @@
 
                 SOFR − EFFR relative to the most recent
 
-                {{
-                    snapshot.spread_statistics
-                    .observations_used
-                }}
+                {{ snapshot.spread_statistics.observations_used }}
 
                 common observations
 
@@ -668,18 +725,19 @@
                         30-Day Average
                     </div>
 
+
                     <div class="card-value">
 
                         {{
                             "%+.2f"|format(
-                                snapshot.spread_statistics
-                                .average_30d_bp
+                                snapshot.spread_statistics.average_30d_bp
                             )
                         }}
 
                         bp
 
                     </div>
+
 
                     <div class="card-change">
                         Recent typical spread
@@ -695,12 +753,12 @@
                         60-Day Range
                     </div>
 
+
                     <div class="card-value">
 
                         {{
                             "%+.0f"|format(
-                                snapshot.spread_statistics
-                                .minimum_60d_bp
+                                snapshot.spread_statistics.minimum_60d_bp
                             )
                         }}
 
@@ -708,14 +766,14 @@
 
                         {{
                             "%+.0f"|format(
-                                snapshot.spread_statistics
-                                .maximum_60d_bp
+                                snapshot.spread_statistics.maximum_60d_bp
                             )
                         }}
 
                         bp
 
                     </div>
+
 
                     <div class="card-change">
                         Recent observed range
@@ -731,16 +789,17 @@
                         60-Day Percentile
                     </div>
 
+
                     <div class="card-value">
 
                         {{
                             "%.0f"|format(
-                                snapshot.spread_statistics
-                                .percentile_60d
+                                snapshot.spread_statistics.percentile_60d
                             )
                         }}
 
                     </div>
+
 
                     <div class="card-change">
                         Current distribution position
@@ -756,16 +815,17 @@
                         60-Day Z-Score
                     </div>
 
+
                     <div class="card-value">
 
                         {{
                             "%+.2f"|format(
-                                snapshot.spread_statistics
-                                .zscore_60d
+                                snapshot.spread_statistics.zscore_60d
                             )
                         }}
 
                     </div>
+
 
                     <div class="card-change">
                         Standard deviations from mean
@@ -795,6 +855,7 @@
             <div class="section-subtitle">
 
                 Reserve Balances + ON RRP − TGA.
+
                 Preliminary monitoring proxy, not a measure
                 of total financial-system liquidity.
 
@@ -810,16 +871,15 @@
                         Reserve Balances
                     </div>
 
+
                     <div class="card-value">
 
-                        ${{
-                            "{:,.0f}".format(
-                                snapshot.system_liquidity
-                                .reserve_balances_billions
-                            )
-                        }}B
+                        ${{ "{:,.0f}".format(
+                            snapshot.system_liquidity.reserve_balances_billions
+                        ) }}B
 
                     </div>
+
 
                     <div class="card-change">
                         Banking-system reserves
@@ -835,16 +895,15 @@
                         ON RRP
                     </div>
 
+
                     <div class="card-value">
 
-                        ${{
-                            "{:,.1f}".format(
-                                snapshot.system_liquidity
-                                .on_rrp_billions
-                            )
-                        }}B
+                        ${{ "{:,.1f}".format(
+                            snapshot.system_liquidity.on_rrp_billions
+                        ) }}B
 
                     </div>
+
 
                     <div class="card-change">
                         Cash parked at the Fed
@@ -860,16 +919,15 @@
                         Treasury General Account
                     </div>
 
+
                     <div class="card-value">
 
-                        ${{
-                            "{:,.0f}".format(
-                                snapshot.system_liquidity
-                                .tga_billions
-                            )
-                        }}B
+                        ${{ "{:,.0f}".format(
+                            snapshot.system_liquidity.tga_billions
+                        ) }}B
 
                     </div>
+
 
                     <div class="card-change">
                         Treasury cash balance
@@ -885,16 +943,15 @@
                         Net Liquidity Proxy
                     </div>
 
+
                     <div class="card-value">
 
-                        ${{
-                            "{:,.0f}".format(
-                                snapshot.system_liquidity
-                                .net_liquidity_proxy_billions
-                            )
-                        }}B
+                        ${{ "{:,.0f}".format(
+                            snapshot.system_liquidity.net_liquidity_proxy_billions
+                        ) }}B
 
                     </div>
+
 
                     <div class="card-change">
                         Reserve + RRP − TGA
@@ -932,38 +989,34 @@
             <div class="cards">
 
 
+                <!-- WEEKLY CHANGE -->
+
+
                 <div class="card">
 
                     <div class="card-title">
                         Weekly Change
                     </div>
 
+
                     <div class="card-value">
 
-                        {% if
-                            snapshot.system_liquidity
-                            .weekly_change_billions < 0
-                        %}
+                        {% if snapshot.system_liquidity.weekly_change_billions < 0 %}
 
-                            -${{
-                                "{:,.0f}".format(
-                                    -snapshot.system_liquidity
-                                    .weekly_change_billions
-                                )
-                            }}B
+                            -${{ "{:,.0f}".format(
+                                -snapshot.system_liquidity.weekly_change_billions
+                            ) }}B
 
                         {% else %}
 
-                            ${{
-                                "{:,.0f}".format(
-                                    snapshot.system_liquidity
-                                    .weekly_change_billions
-                                )
-                            }}B
+                            ${{ "{:,.0f}".format(
+                                snapshot.system_liquidity.weekly_change_billions
+                            ) }}B
 
                         {% endif %}
 
                     </div>
+
 
                     <div class="card-change">
                         Latest weekly movement
@@ -973,40 +1026,34 @@
 
 
 
+                <!-- FOUR WEEK CHANGE -->
+
+
                 <div class="card">
 
                     <div class="card-title">
                         4-Week Change
                     </div>
 
+
                     <div class="card-value">
 
-                        {% if
-                            snapshot.system_liquidity_history
-                            .four_week_change_billions < 0
-                        %}
+                        {% if snapshot.system_liquidity_history.four_week_change_billions < 0 %}
 
-                            -${{
-                                "{:,.0f}".format(
-                                    -snapshot
-                                    .system_liquidity_history
-                                    .four_week_change_billions
-                                )
-                            }}B
+                            -${{ "{:,.0f}".format(
+                                -snapshot.system_liquidity_history.four_week_change_billions
+                            ) }}B
 
                         {% else %}
 
-                            ${{
-                                "{:,.0f}".format(
-                                    snapshot
-                                    .system_liquidity_history
-                                    .four_week_change_billions
-                                )
-                            }}B
+                            ${{ "{:,.0f}".format(
+                                snapshot.system_liquidity_history.four_week_change_billions
+                            ) }}B
 
                         {% endif %}
 
                     </div>
+
 
                     <div class="card-change">
                         One-month direction
@@ -1016,40 +1063,34 @@
 
 
 
+                <!-- THIRTEEN WEEK CHANGE -->
+
+
                 <div class="card">
 
                     <div class="card-title">
                         13-Week Change
                     </div>
 
+
                     <div class="card-value">
 
-                        {% if
-                            snapshot.system_liquidity_history
-                            .thirteen_week_change_billions < 0
-                        %}
+                        {% if snapshot.system_liquidity_history.thirteen_week_change_billions < 0 %}
 
-                            -${{
-                                "{:,.0f}".format(
-                                    -snapshot
-                                    .system_liquidity_history
-                                    .thirteen_week_change_billions
-                                )
-                            }}B
+                            -${{ "{:,.0f}".format(
+                                -snapshot.system_liquidity_history.thirteen_week_change_billions
+                            ) }}B
 
                         {% else %}
 
-                            ${{
-                                "{:,.0f}".format(
-                                    snapshot
-                                    .system_liquidity_history
-                                    .thirteen_week_change_billions
-                                )
-                            }}B
+                            ${{ "{:,.0f}".format(
+                                snapshot.system_liquidity_history.thirteen_week_change_billions
+                            ) }}B
 
                         {% endif %}
 
                     </div>
+
 
                     <div class="card-change">
                         Quarterly direction
@@ -1059,27 +1100,31 @@
 
 
 
+                <!-- 52 WEEK POSITION -->
+
+
                 <div class="card">
 
                     <div class="card-title">
                         52-Week Position
                     </div>
 
+
                     <div class="card-value">
 
                         {{
                             "%.0f"|format(
-                                snapshot
-                                .system_liquidity_history
-                                .percentile_52_week
+                                snapshot.system_liquidity_history.percentile_52_week
                             )
                         }}
 
                     </div>
 
+
                     <div class="card-change">
                         Percentile of past year
                     </div>
+
 
                     <div class="card-date">
 
@@ -1087,9 +1132,7 @@
 
                         {{
                             "%+.2f"|format(
-                                snapshot
-                                .system_liquidity_history
-                                .zscore_52_week
+                                snapshot.system_liquidity_history.zscore_52_week
                             )
                         }}
 
@@ -1122,366 +1165,235 @@
     >
 
 
-        <section class="events-intro">
+        <section class="funding-section">
 
             <h2>
-                Critical Events Identified by the Monitor
+                Historical Critical Events
             </h2>
 
 
-            <p class="events-intro-copy">
+            <div class="section-subtitle">
 
-                These episodes were identified by the
-                Liquidity Monitor's validated historical
-                signal framework. Each event shows what
-                triggered the monitor, the market conditions
-                surrounding the episode and independent
-                sources for further review.
-
-            </p>
-
-
-            <div class="events-methodology">
-
-                <strong>
-                    Interpretation:
-                </strong>
-
-                A Critical signal represents an extreme
-                reading within a specific liquidity factor.
-                It does not automatically mean a financial
-                crisis occurred. Calendar-turn events are
-                preserved as genuine funding stress but are
-                shown separately from broader market
-                disruptions.
+                Major historical liquidity events used to
+                understand how stress develops and transmits
+                across funding markets.
 
             </div>
 
-        </section>
+
+            {% if critical_events %}
+
+                {% for event in critical_events %}
+
+                    <div class="brief-box">
+
+                        <h3>
+                            {{
+                                event.title
+                                | default(
+                                    event.name
+                                    | default("Critical Liquidity Event")
+                                )
+                            }}
+                        </h3>
 
 
+                        {% if event.date is defined %}
 
-        <!-- ==================================================
-             MAJOR MARKET EVENTS
-             ================================================== -->
-
-
-        <div class="critical-event-list">
-
-
-            {% for event in critical_events %}
-
-
-                <article
-                    class="critical-event-card"
-                    id="{{ event['id'] }}"
-                >
-
-
-                    <div class="critical-event-topline">
-                    </div>
-
-
-                    <div class="critical-event-content">
-
-
-                        <div class="critical-event-header">
-
-
-                            <div>
-
-                                <div class="critical-event-period">
-
-                                    {{ event["period"] }}
-
-                                </div>
-
-
-                                <h3 class="critical-event-title">
-
-                                    {{ event["title"] }}
-
-                                </h3>
-
+                            <div class="section-subtitle">
+                                {{ event.date }}
                             </div>
 
+                        {% elif event.event_date is defined %}
 
-                            <div class="critical-badge">
-
-                                CRITICAL
-
+                            <div class="section-subtitle">
+                                {{ event.event_date }}
                             </div>
 
-
-                        </div>
-
+                        {% endif %}
 
 
-                        <div class="event-meta-row">
-
-
-                            <span class="event-type-badge">
-
-                                {{ event["event_type"] }}
-
-                            </span>
-
-
-                            {% for factor in event["factors"] %}
-
-                                <span class="factor-badge">
-
-                                    {{ factor }}
-
-                                </span>
-
-                            {% endfor %}
-
-
-                        </div>
-
-
-
-                        <div class="event-section">
-
-                            <h4>
-                                What the Monitor Identified
-                            </h4>
+                        {% if event.summary is defined %}
 
                             <p>
-
-                                {{
-                                    event[
-                                        "monitor_commentary"
-                                    ]
-                                }}
-
+                                {{ event.summary }}
                             </p>
 
-
-                            <ul class="monitor-evidence-list">
-
-                                {% for evidence in
-                                    event["monitor_evidence"]
-                                %}
-
-                                    <li>
-
-                                        {{ evidence }}
-
-                                    </li>
-
-                                {% endfor %}
-
-                            </ul>
-
-                        </div>
-
-
-
-                        <hr class="event-divider">
-
-
-
-                        <div class="event-section">
-
-                            <h4>
-                                Market Context
-                            </h4>
+                        {% elif event.description is defined %}
 
                             <p>
-
-                                {{
-                                    event[
-                                        "market_commentary"
-                                    ]
-                                }}
-
+                                {{ event.description }}
                             </p>
 
-                        </div>
+                        {% endif %}
 
 
-
-                        <div class="event-section">
-
-                            <h4>
-                                Why It Matters
-                            </h4>
+                        {% if event.liquidity_significance is defined %}
 
                             <p>
+                                <strong>
+                                    Liquidity significance:
+                                </strong>
 
-                                {{
-                                    event[
-                                        "why_it_matters"
-                                    ]
-                                }}
-
+                                {{ event.liquidity_significance }}
                             </p>
 
-                        </div>
+                        {% endif %}
 
 
+                        {% if event.what_happened is defined %}
 
-                        <div class="event-section">
+                            <p>
+                                <strong>
+                                    What happened:
+                                </strong>
 
-                            <h4>
-                                Read More
-                            </h4>
+                                {{ event.what_happened }}
+                            </p>
 
-
-                            <div class="event-sources">
-
-
-                                {% for source in event["sources"] %}
-
-
-                                    <a
-                                        class="event-source-link"
-                                        href="{{ source['url'] }}"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                    >
-
-                                        {{ source["title"] }}
-
-                                    </a>
+                        {% endif %}
 
 
-                                {% endfor %}
+                        {% if event.lesson is defined %}
 
+                            <p>
+                                <strong>
+                                    Monitoring lesson:
+                                </strong>
 
-                            </div>
+                                {{ event.lesson }}
+                            </p>
 
-                        </div>
-
+                        {% endif %}
 
                     </div>
-
-
-                </article>
-
-
-            {% endfor %}
-
-
-        </div>
-
-
-
-        <!-- ==================================================
-             CALENDAR-TURN EVENTS
-             ================================================== -->
-
-
-        <section class="calendar-events-section">
-
-
-            <div class="calendar-events-header">
-
-                <h3>
-                    Calendar-Turn Critical Events
-                </h3>
-
-
-                <p>
-
-                    Reporting dates can produce genuine
-                    secured-funding pressure as dealer and
-                    bank balance-sheet behavior changes.
-                    Liquidity Monitor does not suppress these
-                    observations simply because they are
-                    expected; instead, the calendar context
-                    is shown explicitly.
-
-                </p>
-
-            </div>
-
-
-
-            <div class="calendar-event-grid">
-
-
-                {% for event in calendar_turn_events %}
-
-
-                    <article class="calendar-event-card">
-
-
-                        <div class="calendar-event-period">
-
-                            {{ event["period"] }}
-
-                            &nbsp; • &nbsp;
-
-                            {{ event["event_type"] }}
-
-                        </div>
-
-
-                        <h4>
-
-                            {{ event["title"] }}
-
-                        </h4>
-
-
-                        <p>
-
-                            {{ event["commentary"] }}
-
-                        </p>
-
-
-                        <div class="calendar-event-footer">
-
-
-                            <span class="calendar-event-factor">
-
-                                {{ event["factor"] }}
-
-                            </span>
-
-
-                            <a
-                                class="calendar-event-source"
-                                href="{{ event['source']['url'] }}"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-
-                                NY Fed data ↗
-
-                            </a>
-
-
-                        </div>
-
-
-                    </article>
-
 
                 {% endfor %}
 
+            {% else %}
 
-            </div>
+                <p>
+                    No historical critical events are currently available.
+                </p>
 
+            {% endif %}
 
         </section>
 
 
 
-        <div class="events-disclaimer">
+        <!-- ==================================================
+             CALENDAR TURN EVENTS
+             ================================================== -->
 
-            Historical event classifications are produced
-            from the Liquidity Monitor's quantitative
-            framework using data available for each
-            observation period. The accompanying market
-            commentary is curated for explanatory purposes
-            and does not alter the historical signal.
 
-        </div>
+        <section class="funding-section">
+
+            <h2>
+                Calendar-Turn Events
+            </h2>
+
+
+            <div class="section-subtitle">
+
+                Recurring quarter-end, month-end and year-end
+                periods that can temporarily affect Treasury
+                financing and overnight funding conditions.
+
+            </div>
+
+
+            {% if calendar_turn_events %}
+
+                {% for event in calendar_turn_events %}
+
+                    <div class="brief-box">
+
+                        <h3>
+
+                            {{
+                                event.title
+                                | default(
+                                    event.name
+                                    | default("Calendar-Turn Event")
+                                )
+                            }}
+
+                        </h3>
+
+
+                        {% if event.date is defined %}
+
+                            <div class="section-subtitle">
+                                {{ event.date }}
+                            </div>
+
+                        {% elif event.event_date is defined %}
+
+                            <div class="section-subtitle">
+                                {{ event.event_date }}
+                            </div>
+
+                        {% endif %}
+
+
+                        {% if event.summary is defined %}
+
+                            <p>
+                                {{ event.summary }}
+                            </p>
+
+                        {% elif event.description is defined %}
+
+                            <p>
+                                {{ event.description }}
+                            </p>
+
+                        {% endif %}
+
+
+                        {% if event.liquidity_significance is defined %}
+
+                            <p>
+
+                                <strong>
+                                    Liquidity significance:
+                                </strong>
+
+                                {{ event.liquidity_significance }}
+
+                            </p>
+
+                        {% endif %}
+
+
+                        {% if event.lesson is defined %}
+
+                            <p>
+
+                                <strong>
+                                    Monitoring lesson:
+                                </strong>
+
+                                {{ event.lesson }}
+
+                            </p>
+
+                        {% endif %}
+
+                    </div>
+
+                {% endfor %}
+
+            {% else %}
+
+                <p>
+                    No calendar-turn events are currently available.
+                </p>
+
+            {% endif %}
+
+        </section>
 
 
     </div>
@@ -1491,172 +1403,95 @@
 
 
 
+<!-- ==========================================================
+     FOOTER
+     ========================================================== -->
+
+
 <footer>
 
     Application generated:
-
-    {{
-        snapshot.generated_at.strftime(
-            "%B %d, %Y at %H:%M UTC"
-        )
-    }}
+    {{ snapshot.generated_at.strftime("%B %d, %Y at %H:%M UTC") }}
 
     &nbsp; • &nbsp;
 
     Primary data:
-    Federal Reserve Bank of New York and Federal Reserve
+    Federal Reserve Bank of New York,
+    Federal Reserve and U.S. Treasury
 
 </footer>
 
 
 
 <!-- ==========================================================
-     TAB CONTROLLER
+     TAB NAVIGATION
      ========================================================== -->
 
 
 <script>
 
-document.addEventListener(
-    "DOMContentLoaded",
-    function () {
+    document.addEventListener(
+        "DOMContentLoaded",
+        function () {
 
-        const tabs = Array.from(
-            document.querySelectorAll(
+            const tabs = document.querySelectorAll(
                 "[data-tab-target]"
-            )
-        );
+            );
 
-        const panels = Array.from(
-            document.querySelectorAll(
+            const panels = document.querySelectorAll(
                 "[data-tab-panel]"
-            )
-        );
+            );
 
-
-        function activateTab(
-            name,
-            updateHash = true
-        ) {
 
             tabs.forEach(
                 function (tab) {
 
-                    const selected =
-                        tab.dataset.tabTarget === name;
+                    tab.addEventListener(
+                        "click",
+                        function () {
 
-                    tab.setAttribute(
-                        "aria-selected",
-                        selected ? "true" : "false"
+                            const target =
+                                tab.dataset.tabTarget;
+
+
+                            tabs.forEach(
+                                function (item) {
+
+                                    const selected =
+                                        item === tab;
+
+                                    item.setAttribute(
+                                        "aria-selected",
+                                        selected
+                                            ? "true"
+                                            : "false"
+                                    );
+
+                                }
+                            );
+
+
+                            panels.forEach(
+                                function (panel) {
+
+                                    const active =
+                                        panel.dataset.tabPanel
+                                        === target;
+
+                                    panel.hidden =
+                                        !active;
+
+                                }
+                            );
+
+                        }
                     );
 
                 }
-            );
-
-
-            panels.forEach(
-                function (panel) {
-
-                    const selected =
-                        panel.dataset.tabPanel === name;
-
-                    panel.hidden = !selected;
-
-                }
-            );
-
-
-            if (updateHash) {
-
-                if (name === "critical-events") {
-
-                    history.replaceState(
-                        null,
-                        "",
-                        "#critical-events"
-                    );
-
-                } else {
-
-                    history.replaceState(
-                        null,
-                        "",
-                        window.location.pathname
-                    );
-
-                }
-
-            }
-
-        }
-
-
-        tabs.forEach(
-            function (tab) {
-
-                tab.addEventListener(
-                    "click",
-                    function () {
-
-                        activateTab(
-                            tab.dataset.tabTarget
-                        );
-
-                    }
-                );
-
-            }
-        );
-
-
-        if (
-            window.location.hash ===
-            "#critical-events"
-        ) {
-
-            activateTab(
-                "critical-events",
-                false
-            );
-
-        } else {
-
-            activateTab(
-                "current",
-                false
             );
 
         }
-
-
-        window.addEventListener(
-            "hashchange",
-            function () {
-
-                if (
-                    window.location.hash ===
-                    "#critical-events"
-                ) {
-
-                    activateTab(
-                        "critical-events",
-                        false
-                    );
-
-                } else {
-
-                    activateTab(
-                        "current",
-                        false
-                    );
-
-                }
-
-            }
-        );
-
-    }
-);
+    );
 
 </script>
 

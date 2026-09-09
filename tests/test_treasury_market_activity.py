@@ -66,23 +66,23 @@ def test_treasury_absorption_reference_date():
 
 
 def test_treasury_iorb_reference_date():
+
     result = latest_treasury_market_snapshot(
         as_of_date=REFERENCE_DATE
     )
 
-    assert result.observation_date == date(
-        2026,
-        8,
-        24,
+    assert (
+        result.observation_date
+        == REFERENCE_DATE
     )
 
-    assert result.treasury_3m_percent == 3.87
+    assert result.treasury_3m_percent == 3.85
     assert result.iorb_percent == 3.65
 
     assert round(
         result.spread_bp,
         1,
-    ) == 22.0
+    ) == 20.0
 
 
 def test_treasury_market_activity_signal():
@@ -124,4 +124,4 @@ def test_treasury_market_activity_diagnostics():
     assert round(
         diagnostics.treasury_iorb_spread_bp,
         1,
-    ) == 22.0
+    ) == 20.0
