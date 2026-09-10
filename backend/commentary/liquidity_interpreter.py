@@ -245,20 +245,26 @@ def _fallback_interpretation(
 
 def interpret_liquidity(
     assessment: LiquidityAssessment | None = None,
+    packet: dict[str, Any] | None = None,
 ) -> LiquidityInterpretation:
     """
     Interpret the complete registered-factor framework.
 
     Factor verdicts and the deterministic overall verdict are
     authoritative. The model explains their interaction only.
+
+    If a context packet is supplied, that exact packet is used.
+    This allows the production refresh to validate freshness and
+    persist the identical evidence supplied to the model.
     """
 
-    packet = (
-        build_interpretation_context(
-            assessment=
-                assessment
+    if packet is None:
+        packet = (
+            build_interpretation_context(
+                assessment=
+                    assessment
+            )
         )
-    )
 
     try:
 

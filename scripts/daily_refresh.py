@@ -20,6 +20,13 @@ from backend.commentary.liquidity_interpreter import (
 from backend.services.market_data_refresh import (
     refresh_market_data,
 )
+from backend.commentary.interpretation_context import (
+    build_interpretation_context,
+)
+
+from backend.services.daily_snapshot import (
+    build_daily_snapshot,
+)
 
 
 # =============================================================
@@ -34,23 +41,176 @@ def _refresh_liquidity_interpretation() -> dict[str, object]:
     Interpretation is downstream of the deterministic market-data,
     metric, signal and assessment layers.
 
+    Required market evidence must be current according to its
+    publication cadence before a new interpretation may be
+    generated or stored.
+
     Failure here must never cause the market-data refresh itself
     to fail.
 
-    If the model call falls back to deterministic commentary, do
-    not overwrite the most recent successfully generated AI
-    interpretation.
+    If required evidence is stale, or if the model call falls back
+    to deterministic commentary, do not overwrite the most recent
+    successfully generated AI interpretation.
     """
 
     try:
 
-        assessment = (
-            build_liquidity_assessment()
+        # -----------------------------------------------------
+        # CURRENT DETERMINISTIC SNAPSHOT
+        # -----------------------------------------------------
+
+        snapshot = (
+            build_daily_snapshot()
         )
+
+        assessment = (
+            snapshot.assessment
+        )
+
+        # -----------------------------------------------------
+        # EXACT INTERPRETATION CONTEXT
+        # -----------------------------------------------------
+
+        context = (
+            build_interpretation_context(
+                assessment=assessment
+            )
+        )
+
+        # -----------------------------------------------------
+        # REQUIRED EVIDENCE FRESHNESS
+        # -----------------------------------------------------
+
+        funding_freshness = (
+            snapshot.funding_freshness
+        )
+
+        system_freshness = (
+            snapshot.system_liquidity_freshness
+        )
+
+        freshness_validated = (
+            funding_freshness.is_current
+            and
+            system_freshness.is_current
+        )
+
+        context[
+            "evidence_freshness"
+        ] = {
+            "validated":
+                freshness_validated,
+
+            "funding": {
+                "observation_date":
+                    funding_freshness
+                    .observation_date
+                    .isoformat(),
+
+                "expected_observation_date":
+                    funding_freshness
+                    .expected_observation_date
+                    .isoformat(),
+
+                "business_days_stale":
+                    funding_freshness
+                    .business_days_stale,
+
+                "is_current":
+                    funding_freshness
+                    .is_current,
+
+                "status":
+                    funding_freshness
+                    .label,
+
+                "blocking":
+                    True,
+            },
+
+            "system_liquidity": {
+                "observation_date":
+                    system_freshness
+                    .observation_date
+                    .isoformat(),
+
+                "expected_observation_date":
+                    system_freshness
+                    .expected_observation_date
+                    .isoformat(),
+
+                "business_days_stale":
+                    system_freshness
+                    .business_days_stale,
+
+                "is_current":
+                    system_freshness
+                    .is_current,
+
+                "status":
+                    system_freshness
+                    .label,
+
+                "blocking":
+                    True,
+            },
+        }
+
+        # -----------------------------------------------------
+        # FRESHNESS GATE
+        # -----------------------------------------------------
+
+        if not freshness_validated:
+
+            stale_inputs: list[str] = []
+
+            if not funding_freshness.is_current:
+                stale_inputs.append(
+                    "funding"
+                )
+
+            if not system_freshness.is_current:
+                stale_inputs.append(
+                    "system_liquidity"
+                )
+
+            print()
+
+            print(
+                "Liquidity interpretation:"
+                " skipped — required evidence is stale."
+            )
+
+            print(
+                "Stale required inputs: "
+                + ", ".join(
+                    stale_inputs
+                )
+            )
+
+            print(
+                "Stored AI interpretation was not overwritten."
+            )
+
+            return {
+                "status":
+                    "skipped_stale_inputs",
+
+                "saved":
+                    False,
+
+                "stale_inputs":
+                    stale_inputs,
+            }
+
+        # -----------------------------------------------------
+        # AI INTERPRETATION
+        # -----------------------------------------------------
 
         interpretation = (
             interpret_liquidity(
-                assessment=assessment
+                assessment=assessment,
+                packet=context,
             )
         )
 
@@ -73,12 +233,20 @@ def _refresh_liquidity_interpretation() -> dict[str, object]:
                 "model": interpretation.model,
             }
 
+        # -----------------------------------------------------
+        # STORE EXACT MODEL CONTEXT + RESULT
+        # -----------------------------------------------------
+
         saved = (
             save_liquidity_interpretation(
                 interpretation=
                     interpretation,
+
                 assessment=
                     assessment,
+
+                context=
+                    context,
             )
         )
 

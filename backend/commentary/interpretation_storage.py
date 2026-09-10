@@ -40,7 +40,9 @@ INTERPRETER_VERSION = "v1"
 def save_liquidity_interpretation(
     interpretation: LiquidityInterpretation,
     assessment: LiquidityAssessment,
+    context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    
     """
     Store today's liquidity interpretation.
 
@@ -60,9 +62,12 @@ def save_liquidity_interpretation(
         PACIFIC
     ).date()
 
-    context = build_interpretation_context(
-        assessment=assessment
-    )
+    if context is None:
+        context = (
+            build_interpretation_context(
+            assessment=assessment
+            )
+        )
 
     payload = asdict(
         interpretation
