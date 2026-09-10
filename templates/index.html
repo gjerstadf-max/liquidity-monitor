@@ -129,27 +129,62 @@
 
             {% if snapshot.liquidity_interpretation["available"] %}
 
-                <div class="headline">
-                    {{ snapshot.liquidity_interpretation["headline"] }}
+    <div class="interpretation">
+
+        <div class="headline interpretation-headline">
+            {{ snapshot.liquidity_interpretation["headline"] }}
+        </div>
+
+        <div class="interpretation-comment">
+            {{ snapshot.liquidity_interpretation["overall_comment"] }}
+        </div>
+
+        {% if snapshot.liquidity_interpretation["counter_evidence"] %}
+            <div class="interpretation-section">
+
+                <div class="interpretation-section-title">
+                    Why This Is Not Worse
                 </div>
 
+                <ul class="interpretation-list">
+                    {% for item in snapshot.liquidity_interpretation["counter_evidence"] %}
+                        <li>
+                            {{ item }}
+                        </li>
+                    {% endfor %}
+                </ul>
 
-                <p>
-                    {{ snapshot.liquidity_interpretation["overall_comment"] }}
-                </p>
+            </div>
+        {% endif %}
 
+        {% if snapshot.liquidity_interpretation["what_to_watch"] %}
+            <div class="interpretation-section">
 
-                <div class="section-subtitle">
-
-                    Cross-factor interpretation generated
-                    {{ snapshot.liquidity_interpretation["snapshot_date"] }}.
-
-                    The quantitative factor assessments and
-                    overall verdict remain deterministic.
-
+                <div class="interpretation-section-title">
+                    What Would Change the View
                 </div>
 
-            {% else %}
+                <ul class="interpretation-list">
+                    {% for item in snapshot.liquidity_interpretation["what_to_watch"] %}
+                        <li>
+                            {{ item }}
+                        </li>
+                    {% endfor %}
+                </ul>
+
+            </div>
+        {% endif %}
+
+        <div class="section-subtitle interpretation-meta">
+            Cross-factor interpretation generated
+            {{ snapshot.liquidity_interpretation["snapshot_date"] }}.
+            Quantitative factor assessments and the
+            overall verdict remain deterministic.
+        </div>
+
+    </div>
+
+{% else %}
 
                 <p>
                     {{ snapshot.assessment.summary }}
