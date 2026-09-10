@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from datetime import datetime, time
+from zoneinfo import ZoneInfo
+
 from typing import Any
 
 from backend.assessments.engine import (
@@ -49,6 +52,34 @@ from backend.services.freshness import (
     system_liquidity_data_freshness,
 )
 
+PACIFIC = ZoneInfo(
+    "America/Los_Angeles"
+)
+
+MORNING_SNAPSHOT_TIME = time(
+    hour=9,
+    minute=0,
+)
+
+def _morning_freshness_reference() -> datetime:
+    """
+    Return the canonical morning reference time used to
+    evaluate data freshness for the daily liquidity snapshot.
+
+    The application is refreshed once each morning, so
+    freshness should not change merely because the webpage
+    is viewed later in the day.
+    """
+
+    today = datetime.now(
+        PACIFIC
+    ).date()
+
+    return datetime.combine(
+        today,
+        MORNING_SNAPSHOT_TIME,
+        tzinfo=PACIFIC,
+    )
 
 # =============================================================
 # DAILY SNAPSHOT
@@ -352,17 +383,23 @@ def build_daily_snapshot(
     # DATA FRESHNESS
     # =========================================================
 
+    freshness_reference = (
+    _morning_freshness_reference()
+)
+
     funding_freshness = (
         funding_data_freshness(
-            funding.observation_date
+            funding.observation_date,
+            now=freshness_reference,
         )
     )
 
     system_liquidity_freshness = (
         system_liquidity_data_freshness(
-            system_liquidity.observation_date
+            system_liquidity.observation_date,
+            now=freshness_reference,
         )
-    )
+)
 
     # =========================================================
     # STORED INTELLIGENT INTERPRETATION
