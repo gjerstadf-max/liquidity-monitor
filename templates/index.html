@@ -1222,100 +1222,90 @@
 
                     <div class="brief-box">
 
-                        <h3>
-                            {{
-                                event.title
-                                | default(
-                                    event.name
-                                    | default("Critical Liquidity Event")
-                                )
-                            }}
-                        </h3>
+    <h3>
+        {{ event.title }}
+    </h3>
 
+    <div class="section-subtitle">
+        {{ event.period }}
 
-                        {% if event.date is defined %}
+        {% if event.event_type %}
+            · {{ event.event_type }}
+        {% endif %}
 
-                            <div class="section-subtitle">
-                                {{ event.date }}
-                            </div>
+        {% if event.severity %}
+            · {{ event.severity }}
+        {% endif %}
+    </div>
 
-                        {% elif event.event_date is defined %}
+    {% if event.monitor_commentary %}
+        <p>
+            <strong>
+                Liquidity Monitor:
+            </strong>
+            {{ event.monitor_commentary }}
+        </p>
+    {% endif %}
 
-                            <div class="section-subtitle">
-                                {{ event.event_date }}
-                            </div>
+    {% if event.monitor_evidence %}
+        <ul>
+            {% for item in event.monitor_evidence %}
+                <li>
+                    {{ item }}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
 
-                        {% endif %}
+    {% if event.market_commentary %}
+        <p>
+            <strong>
+                What Happened:
+            </strong>
+            {{ event.market_commentary }}
+        </p>
+    {% endif %}
 
+    {% if event.why_it_matters %}
+        <p>
+            <strong>
+                Why It Matters:
+            </strong>
+            {{ event.why_it_matters }}
+        </p>
+    {% endif %}
 
-                        {% if event.summary is defined %}
+    {% if event.sources %}
+        <div class="section-subtitle">
+            Sources
+        </div>
 
-                            <p>
-                                {{ event.summary }}
-                            </p>
+        <ul>
+            {% for source in event.sources %}
+                <li>
+                    <a
+                        href="{{ source.url }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        {{ source.title }}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
 
-                        {% elif event.description is defined %}
-
-                            <p>
-                                {{ event.description }}
-                            </p>
-
-                        {% endif %}
-
-
-                        {% if event.liquidity_significance is defined %}
-
-                            <p>
-                                <strong>
-                                    Liquidity significance:
-                                </strong>
-
-                                {{ event.liquidity_significance }}
-                            </p>
-
-                        {% endif %}
-
-
-                        {% if event.what_happened is defined %}
-
-                            <p>
-                                <strong>
-                                    What happened:
-                                </strong>
-
-                                {{ event.what_happened }}
-                            </p>
-
-                        {% endif %}
-
-
-                        {% if event.lesson is defined %}
-
-                            <p>
-                                <strong>
-                                    Monitoring lesson:
-                                </strong>
-
-                                {{ event.lesson }}
-                            </p>
-
-                        {% endif %}
-
-                    </div>
+</div>
 
                 {% endfor %}
 
             {% else %}
 
                 <p>
-                    No historical critical events are currently available.
+                    No critical events are currently available.
                 </p>
 
-            {% endif %}
-
-        </section>
-
-
+            {% endif %} 
 
         <!-- ==================================================
              CALENDAR TURN EVENTS
@@ -1339,95 +1329,53 @@
 
 
             {% if calendar_turn_events %}
+    {% for event in calendar_turn_events %}
 
-                {% for event in calendar_turn_events %}
+        <div class="brief-box">
 
-                    <div class="brief-box">
+            <h3>
+                {{ event.title }}
+            </h3>
 
-                        <h3>
+            <div class="section-subtitle">
+                {{ event.period }}
 
-                            {{
-                                event.title
-                                | default(
-                                    event.name
-                                    | default("Calendar-Turn Event")
-                                )
-                            }}
+                {% if event.event_type %}
+                    · {{ event.event_type }}
+                {% endif %}
 
-                        </h3>
+                {% if event.factor %}
+                    · {{ event.factor }}
+                {% endif %}
+            </div>
 
-
-                        {% if event.date is defined %}
-
-                            <div class="section-subtitle">
-                                {{ event.date }}
-                            </div>
-
-                        {% elif event.event_date is defined %}
-
-                            <div class="section-subtitle">
-                                {{ event.event_date }}
-                            </div>
-
-                        {% endif %}
-
-
-                        {% if event.summary is defined %}
-
-                            <p>
-                                {{ event.summary }}
-                            </p>
-
-                        {% elif event.description is defined %}
-
-                            <p>
-                                {{ event.description }}
-                            </p>
-
-                        {% endif %}
-
-
-                        {% if event.liquidity_significance is defined %}
-
-                            <p>
-
-                                <strong>
-                                    Liquidity significance:
-                                </strong>
-
-                                {{ event.liquidity_significance }}
-
-                            </p>
-
-                        {% endif %}
-
-
-                        {% if event.lesson is defined %}
-
-                            <p>
-
-                                <strong>
-                                    Monitoring lesson:
-                                </strong>
-
-                                {{ event.lesson }}
-
-                            </p>
-
-                        {% endif %}
-
-                    </div>
-
-                {% endfor %}
-
-            {% else %}
-
+            {% if event.commentary %}
                 <p>
-                    No calendar-turn events are currently available.
+                    {{ event.commentary }}
                 </p>
-
             {% endif %}
 
+            {% if event.source is defined %}
+                <div class="section-subtitle">
+                    Source:
+                    <a
+                        href="{{ event.source.url }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        {{ event.source.title }}
+                    </a>
+                </div>
+            {% endif %}
+
+        </div>
+
+    {% endfor %}
+{% else %}
+    <p>
+        No calendar-turn events are currently available.
+    </p>
+{% endif %}
         </section>
 
 
