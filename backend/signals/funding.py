@@ -3,8 +3,9 @@ from backend.metrics.funding import (
 )
 from backend.signals.models import Signal
 
+from datetime import date
 
-def evaluate_funding_signal() -> Signal:
+def evaluate_funding_signal(as_of_date: date | None = None) -> Signal:
     """
     Evaluate SOFR-EFFR funding conditions using both:
 
@@ -19,7 +20,7 @@ def evaluate_funding_signal() -> Signal:
     but not automatically as equivalent funding stress.
     """
 
-    stats = funding_spread_statistics()
+    stats = funding_spread_statistics(as_of_date=as_of_date)
 
     spread = float(
         stats.current_spread_bp

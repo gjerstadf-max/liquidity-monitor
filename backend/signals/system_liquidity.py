@@ -4,8 +4,20 @@ from backend.metrics.system_liquidity import (
 )
 from backend.signals.models import Signal
 
+from datetime import date
 
-def evaluate_system_liquidity_signal() -> Signal:
+def evaluate_system_liquidity_signal(
+    as_of_date: date | None = None,
+) -> Signal:
+
+    history = system_liquidity_history_metrics(
+        as_of_date=as_of_date
+    )
+
+    current = system_liquidity_metrics(
+        as_of_date=as_of_date
+    )
+
     """
     Evaluate the preliminary system-liquidity proxy:
 

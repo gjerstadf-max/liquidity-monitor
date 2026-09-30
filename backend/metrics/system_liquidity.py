@@ -214,6 +214,7 @@ def _value_as_of(
 
 def build_system_liquidity_history(
     lookback: int = 52,
+    as_of_date: date | None = None,
 ) -> list[SystemLiquidityPoint]:
     """
     Build weekly system-liquidity proxy history.
@@ -246,6 +247,19 @@ def build_system_liquidity_history(
         tga,
     ) = _load_system_series()
 
+    if as_of_date is not None:
+        reserves = [
+            (
+                observation_date,
+                value,
+            )
+           for (
+                observation_date,
+                value,
+            )
+            in reserves
+            if observation_date <= as_of_date
+      ]
 
     if not reserves:
         raise RuntimeError(
@@ -321,7 +335,9 @@ def build_system_liquidity_history(
 # =============================================================
 
 
-def system_liquidity_metrics() -> SystemLiquidityMetrics:
+def system_liquidity_metrics(
+    as_of_date: date | None = None,
+) -> SystemLiquidityMetrics:
     """
     Current system-liquidity decomposition.
 
@@ -336,7 +352,8 @@ def system_liquidity_metrics() -> SystemLiquidityMetrics:
     """
 
     history = build_system_liquidity_history(
-        lookback=5
+        lookback=5,
+        as_of_date=as_of_date,
     )
 
 
@@ -447,6 +464,7 @@ def system_liquidity_metrics() -> SystemLiquidityMetrics:
 
 def system_liquidity_history_metrics(
     lookback: int = 52,
+    as_of_date: date | None = None,
 ) -> SystemLiquidityHistoryMetrics:
     """
     Calculate historical context for the weekly
@@ -470,7 +488,8 @@ def system_liquidity_history_metrics(
 
 
     history = build_system_liquidity_history(
-        lookback=lookback
+        lookback=lookback,
+        as_of_date=as_of_date
     )
 
 

@@ -46,9 +46,9 @@ class FundingSpreadStatistics:
     zscore_60d: float
 
 
-def _load_common_rate_history() -> list[
-    tuple[date, Decimal, Decimal]
-]:
+def _load_common_rate_history(
+        as_of_date: date | None = None,
+):
     """
     Return common SOFR/EFFR observations sorted newest first.
 
@@ -98,6 +98,13 @@ def _load_common_rate_history() -> list[
         reverse=True,
     )
 
+    if as_of_date is not None:
+        common_dates = [
+            observation_date
+            for observation_date in common_dates
+            if observation_date <= as_of_date
+        ]
+
     if not common_dates:
         raise RuntimeError(
             "No common SOFR/EFFR observation dates found."
@@ -113,8 +120,12 @@ def _load_common_rate_history() -> list[
     ]
 
 
-def latest_funding_snapshot() -> FundingSnapshot:
-    history = _load_common_rate_history()
+def latest_funding_snapshot(
+    as_of_date: date | None = None,
+) -> FundingSnapshot:
+    history = _load_common_rate_history(
+        as_of_date=as_of_date,
+    )
 
     if len(history) < 2:
         raise RuntimeError(
@@ -141,27 +152,25 @@ def latest_funding_snapshot() -> FundingSnapshot:
     return FundingSnapshot(
         observation_date=current_date,
         previous_observation_date=previous_date,
-
         sofr=sofr,
         previous_sofr=previous_sofr,
         sofr_change_bp=(
             sofr - previous_sofr
         ) * Decimal("100"),
-
         effr=effr,
         previous_effr=previous_effr,
         effr_change_bp=(
             effr - previous_effr
         ) * Decimal("100"),
-
         spread_basis_points=spread,
         previous_spread_basis_points=previous_spread,
         spread_change_bp=spread - previous_spread,
     )
 
-
 def funding_spread_statistics(
     lookback: int = 60,
+    as_of_date: date | None = None,
+
 ) -> FundingSpreadStatistics:
     """
     Calculate historical context for the SOFR-EFFR spread.
@@ -174,7 +183,9 @@ def funding_spread_statistics(
             "lookback must be at least 2"
         )
 
-    history = _load_common_rate_history()
+    history = _load_common_rate_history(
+        as_of_date=as_of_date
+    )
 
     selected = history[:lookback]
 
