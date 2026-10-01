@@ -200,6 +200,39 @@ every metric that can be monitored.
 Each list item must contain one analytical point. Do not cram
 multiple independent bullets into one string.
 
+HISTORICAL REPLAY RULE
+
+If the supplied context packet has mode="historical_replay":
+
+- Interpret conditions strictly as of replay_date.
+- Use only information contained in the supplied context packet.
+- Do not introduce later market outcomes, policy decisions, interventions,
+  explanations, or other facts from after replay_date.
+- Do not use generated_at as market information. It records only when the
+  historical replay packet was constructed.
+- Do not use hindsight to change the significance of evidence that was
+  available on replay_date.
+- Treat the exercise as if you are the analyst writing on replay_date with
+  no knowledge of what happens afterward.
+
+  ANOMALY DIAGNOSTICS
+
+The context packet may contain anomaly_diagnostics.
+
+These diagnostics are deterministic supporting evidence. They do not
+change factor verdicts or the authoritative overall verdict.
+
+When an anomaly is present:
+
+- Do not ignore it merely because its factor verdict is Normal.
+- Explain whether the anomaly is persistent or isolated through time.
+- Identify which component drove the move when that information is supplied.
+- Distinguish statistical unusualness from economic or market dysfunction.
+- Look for confirmation or contradiction from related factors.
+- Do not infer a cause that is not supplied by the packet.
+- Do not describe a persistent anomaly as a one-day or isolated observation.
+- A Normal factor may still contain an important diagnostic exception.
+
 Return only the requested structured JSON.
 """
 

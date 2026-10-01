@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+
 from typing import Any
 
 from backend.assessments.engine import (
@@ -13,6 +14,10 @@ from backend.factors.registry import (
     factor_definition,
 )
 
+from backend.commentary.anomaly_context import (
+    build_anomaly_diagnostics,
+)
+
 
 # =============================================================
 # INTERPRETATION CONTEXT
@@ -21,6 +26,7 @@ from backend.factors.registry import (
 
 def build_interpretation_context(
     assessment: LiquidityAssessment | None = None,
+    replay_date: date | None = None,
 ) -> dict[str, Any]:
     """
     Build the structured context packet supplied to the
@@ -42,7 +48,9 @@ def build_interpretation_context(
     if assessment is None:
 
         assessment = (
-            build_liquidity_assessment()
+            build_liquidity_assessment(
+                as_of_date=replay_date
+            )
         )
 
     factors: list[
@@ -160,15 +168,37 @@ def build_interpretation_context(
         if factor["verdict"] == "Normal"
     ]
 
+    anomaly_diagnostics = (
+    build_anomaly_diagnostics(
+        as_of_date=replay_date
+    )
+)
+
+
     # ---------------------------------------------------------
     # PACKET
     # ---------------------------------------------------------
 
     return {
-        "generated_at":
-            datetime.now(
-                timezone.utc
-            ).isoformat(),
+    "mode": (
+        "historical_replay"
+        if replay_date is not None
+        else "live"
+    ),
+
+    "replay_date": (
+        replay_date.isoformat()
+        if replay_date is not None
+        else None
+    ),
+    "anomaly_diagnostics":
+        anomaly_diagnostics,
+
+
+    "generated_at":
+        datetime.now(
+            timezone.utc
+        ).isoformat(),
 
         "framework": {
 

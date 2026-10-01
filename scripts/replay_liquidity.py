@@ -6,6 +6,12 @@ from datetime import date
 from backend.assessments.engine import (
     build_liquidity_assessment,
 )
+from backend.commentary.interpretation_context import (
+    build_interpretation_context,
+)
+from backend.commentary.liquidity_interpreter import (
+    interpret_liquidity,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -20,6 +26,15 @@ def parse_args() -> argparse.Namespace:
         "--date",
         required=True,
         help="Historical replay date in YYYY-MM-DD format.",
+    )
+
+    parser.add_argument(
+        "--interpret",
+        action="store_true",
+        help=(
+            "Generate an LLM interpretation of the "
+            "historical replay packet."
+        ),
     )
 
     return parser.parse_args()
@@ -86,6 +101,54 @@ def main() -> None:
 
     print()
     print("=" * 76)
+
+    if not args.interpret:
+        return
+
+    packet = build_interpretation_context(
+        assessment=assessment,
+        replay_date=replay_date,
+    )
+
+    interpretation = interpret_liquidity(
+        packet=packet
+    )
+
+    print()
+    print("HISTORICAL INTERPRETATION")
+    print("=" * 76)
+
+    print()
+    print(interpretation.headline)
+
+    print()
+    print(interpretation.overall_comment)
+
+    if interpretation.primary_drivers:
+        print()
+        print("PRIMARY DRIVERS")
+
+        for item in interpretation.primary_drivers:
+            print(f"- {item}")
+
+    if interpretation.counter_evidence:
+        print()
+        print("WHY THIS IS NOT WORSE")
+
+        for item in interpretation.counter_evidence:
+            print(f"- {item}")
+
+    if interpretation.what_to_watch:
+        print()
+        print("WHAT WOULD CHANGE THE VIEW")
+
+        for item in interpretation.what_to_watch:
+            print(f"- {item}")
+
+    print()
+    print(
+        f"Model: {interpretation.model}"
+    )
 
 
 if __name__ == "__main__":
