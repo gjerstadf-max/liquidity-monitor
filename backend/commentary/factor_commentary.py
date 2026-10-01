@@ -64,25 +64,16 @@ def _format_sigma(
 
 
 def funding_what_matters() -> str:
-    snapshot = (
-        latest_funding_snapshot()
-    )
-
-    stats = (
-        funding_spread_statistics()
-    )
-
     return (
-        "Funding conditions: "
-        f"SOFR is {float(snapshot.sofr):.2f}% "
-        f"versus EFFR at {float(snapshot.effr):.2f}%, "
-        f"leaving the SOFR-EFFR spread at "
-        f"{_format_bp(stats.current_spread_bp)}. "
-        f"The spread is at approximately the "
-        f"{stats.percentile_60d:.0f}th percentile of its "
-        f"recent distribution with a z-score of "
-        f"{_format_sigma(stats.zscore_60d)}."
+        "Funding Conditions measures relative pressure in "
+        "overnight secured funding, principally through the "
+        "relationship between SOFR and unsecured reference "
+        "rates such as EFFR. Persistent positive widening can "
+        "signal greater secured-funding pressure, while large "
+        "negative divergence is treated as unusual but not as "
+        "equivalent evidence of funding stress."
     )
+
 
 
 def funding_watch(
@@ -125,86 +116,48 @@ def funding_watch(
 
 
 def system_liquidity_what_matters() -> str:
-    current = (
-        system_liquidity_metrics()
-    )
-
-    history = (
-        system_liquidity_history_metrics()
-    )
-
     return (
-        "System liquidity: "
-        f"the monitoring proxy "
-        f"(reserve balances + ON RRP − TGA) stands at "
-        f"{_format_billions(current.net_liquidity_proxy_billions)}. "
-        f"It has changed "
-        f"{_format_billions(history.four_week_change_billions)} "
-        f"over four weeks and "
-        f"{_format_billions(history.thirteen_week_change_billions)} "
-        f"over thirteen weeks. "
-        f"The current level is near the "
-        f"{history.percentile_52_week:.0f}th percentile "
-        f"of the trailing 52-week range."
+        "System Liquidity tracks reserve balances plus ON RRP "
+        "less the Treasury General Account as a monitoring proxy "
+        "for the liquidity buffer available to absorb funding "
+        "and Treasury cash-flow demands. Both the level and its "
+        "four- and thirteen-week direction are evaluated. The "
+        "proxy is not a measure of total financial-system liquidity."
     )
 
 
 def system_liquidity_watch(
     verdict: str,
 ) -> str:
-    metrics = (
-        system_liquidity_metrics()
-    )
-
-    history = (
-        system_liquidity_history_metrics()
-    )
-
-    contribution_text = (
-        f"Reserve balances are "
-        f"{_format_billions(metrics.reserve_balances_billions)}, "
-        f"ON RRP is "
-        f"{_format_billions(metrics.on_rrp_billions)}, "
-        f"and the TGA is "
-        f"{_format_billions(metrics.tga_billions)}."
-    )
-
     if verdict == "Normal":
         return (
-            "System liquidity: aggregate liquidity remains "
-            "comfortable. "
-            f"{contribution_text}"
+            "System liquidity remains broadly comfortable. "
+            "Watch for sustained declines in reserve balances, "
+            "continued depletion of ON RRP, or TGA accumulation "
+            "that materially reduces the liquidity buffer."
         )
 
     if verdict == "Watch":
         return (
-            "System liquidity: the liquidity buffer is "
-            "becoming less comfortable. Watch whether reserve "
-            "balances continue to decline, ON RRP remains "
-            "largely exhausted, or TGA accumulation removes "
-            "additional liquidity from the banking system. "
-            f"{contribution_text} "
-            f"The four-week change in the proxy is "
-            f"{_format_billions(history.four_week_change_billions)}."
+            "System liquidity is becoming less comfortable. "
+            "Watch whether reserve balances continue to decline, "
+            "ON RRP remains largely exhausted, or TGA accumulation "
+            "removes additional liquidity from the banking system."
         )
 
     if verdict == "Elevated":
         return (
-            "System liquidity: aggregate liquidity is under "
-            "meaningful pressure. Watch the pace of reserve "
-            "decline and whether Treasury cash accumulation "
-            "continues to drain liquidity. "
-            f"{contribution_text}"
+            "System liquidity is under meaningful pressure. "
+            "Watch the pace of reserve decline and whether "
+            "Treasury cash accumulation continues to drain "
+            "available liquidity."
         )
 
     return (
-        "System liquidity: the available liquidity buffer is "
-        "materially stressed. Reserve balances, Treasury cash "
-        "flows and remaining ON RRP capacity require close "
-        "monitoring. "
-        f"{contribution_text}"
+        "The available system-liquidity buffer is materially "
+        "stressed. Reserve balances, Treasury cash flows and "
+        "remaining ON RRP capacity require close monitoring."
     )
-
 
 # =============================================================
 # REPO MARKET
@@ -212,26 +165,14 @@ def system_liquidity_watch(
 
 
 def repo_what_matters() -> str:
-    stats = (
-        repo_market_statistics(
-            lookback=60
-        )
-    )
-
     return (
-        "Repo market pressure: "
-        f"SOFR-OBFR is "
-        f"{_format_bp(stats.sofr_obfr.current)}, "
-        f"SOFR-TGCR is "
-        f"{_format_bp(stats.sofr_tgcr.current)}, "
-        f"and SOFR-BGCR is "
-        f"{_format_bp(stats.sofr_bgcr.current)}. "
-        f"The SOFR interquartile range is "
-        f"{_format_bp(stats.sofr_iqr.current)} "
-        f"and the upper tail is "
-        f"{_format_bp(stats.sofr_upper_tail.current)}."
+        "Repo Market Pressure measures whether secured overnight "
+        "funding is becoming broadly dislocated. It evaluates "
+        "differences among SOFR, TGCR and BGCR together with "
+        "SOFR transaction dispersion and upper-tail pricing, "
+        "allowing isolated rate moves to be distinguished from "
+        "broader repo-market pressure."
     )
-
 
 def repo_watch(
     verdict: str,
@@ -274,22 +215,13 @@ def repo_watch(
 
 
 def treasury_intermediation_what_matters() -> str:
-    stats = (
-        treasury_intermediation_statistics()
-    )
-
     return (
-        "Treasury intermediation: "
-        f"dealer Treasury positions are "
-        f"{_format_billions(stats.dealer_positions.current, 1)}, "
-        f"weekly Treasury transaction activity is "
-        f"{_format_billions(stats.treasury_transactions.current, 1)}, "
-        f"and Treasury securities borrowed are "
-        f"{_format_billions(stats.securities_borrowed.current, 1)}. "
-        f"Total Treasury settlement fails are "
-        f"{_format_billions(stats.total_fails.current, 1)}, "
-        f"with a trailing 52-week z-score of "
-        f"{_format_sigma(stats.total_fails.zscore_52_week)}."
+        "Treasury Intermediation evaluates whether dealer "
+        "balance-sheet adjustment, Treasury trading and borrowing "
+        "demand, and settlement friction are becoming unusually "
+        "strained. The factor looks for convergence across these "
+        "dimensions rather than treating a single unusual measure "
+        "as evidence of broad Treasury-market dysfunction."
     )
 
 
