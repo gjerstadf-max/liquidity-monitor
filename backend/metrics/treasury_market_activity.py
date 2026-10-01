@@ -140,6 +140,43 @@ class TreasuryMarketSpreadStatistics:
     ) -> float:
         return self.zscore
 
+@dataclass(frozen=True)
+class TreasuryIorbOutlierDiagnostic:
+    """
+    Deterministic decomposition of an unusually large
+    Treasury 3M - IORB relative-pricing observation.
+
+    This object explains the anomaly. It does not change
+    the Treasury Market Activity factor verdict.
+    """
+
+    triggered: bool
+
+    observation_date: date
+
+    spread_bp: float
+    spread_zscore: float
+    spread_percentile: float
+
+    treasury_3m_percent: float
+    iorb_percent: float
+
+    treasury_change_1d_bp: float | None
+    treasury_change_5d_bp: float | None
+    treasury_change_20d_bp: float | None
+
+    iorb_change_1d_bp: float | None
+    iorb_change_5d_bp: float | None
+    iorb_change_20d_bp: float | None
+
+    spread_change_1d_bp: float | None
+    spread_change_5d_bp: float | None
+    spread_change_20d_bp: float | None
+
+    consecutive_above_95th: int
+    consecutive_above_99th: int
+
+    primary_mover: str
 
 @dataclass(frozen=True)
 class TreasuryBillSupplyStatistics:
@@ -637,7 +674,292 @@ def treasury_market_spread_statistics(
                 values,
             ),
     )
+def treasury_iorb_outlier_diagnostic(
+    as_of_date: date | None = None,
+    lookback: int = 60,
+    z_threshold: float = 3.0,
+) -> TreasuryIorbOutlierDiagnostic:
+    """
+    Diagnose an unusually large Treasury 3M - IORB spread.
 
+    The diagnostic answers:
+
+        - Is the spread sufficiently unusual to investigate?
+        - Is Treasury or IORB primarily driving the move?
+        - How quickly have the underlying rates moved?
+        - Is the unusual spread persistent?
+
+    It is informational only and does not alter the
+    Treasury Market Activity factor verdict.
+    """
+
+    history = (
+        _load_common_rate_history(
+            as_of_date=as_of_date
+        )
+    )
+
+    if len(history) < 2:
+        raise RuntimeError(
+            "At least two common Treasury 3M / IORB "
+            "observations are required."
+        )
+
+    pricing = (
+        treasury_market_spread_statistics(
+            lookback=lookback,
+            as_of_date=as_of_date,
+        )
+    )
+
+    (
+        observation_date,
+        treasury_rate,
+        iorb_rate,
+        spread_bp,
+    ) = history[-1]
+
+    def rate_change_bp(
+        column: int,
+        periods: int,
+    ) -> float | None:
+
+        if len(history) <= periods:
+            return None
+
+        return (
+            history[-1][column]
+            - history[-(periods + 1)][column]
+        ) * 100.0
+
+    def spread_change_bp(
+        periods: int,
+    ) -> float | None:
+
+        if len(history) <= periods:
+            return None
+
+        return (
+            history[-1][3]
+            - history[-(periods + 1)][3]
+        )
+
+    treasury_change_1d = rate_change_bp(
+        1,
+        1,
+    )
+
+    treasury_change_5d = rate_change_bp(
+        1,
+        5,
+    )
+
+    treasury_change_20d = rate_change_bp(
+        1,
+        20,
+    )
+
+    iorb_change_1d = rate_change_bp(
+        2,
+        1,
+    )
+
+    iorb_change_5d = rate_change_bp(
+        2,
+        5,
+    )
+
+    iorb_change_20d = rate_change_bp(
+        2,
+        20,
+    )
+
+    spread_change_1d = spread_change_bp(
+        1
+    )
+
+    spread_change_5d = spread_change_bp(
+        5
+    )
+
+    spread_change_20d = spread_change_bp(
+        20
+    )
+
+    # ---------------------------------------------------------
+    # PRIMARY MOVER
+    # ---------------------------------------------------------
+
+    treasury_mover = (
+        treasury_change_5d
+        if treasury_change_5d is not None
+        else treasury_change_1d
+    )
+
+    iorb_mover = (
+        iorb_change_5d
+        if iorb_change_5d is not None
+        else iorb_change_1d
+    )
+
+    if (
+        treasury_mover is None
+        or iorb_mover is None
+    ):
+        primary_mover = (
+            "insufficient_history"
+        )
+
+    elif (
+        abs(treasury_mover)
+        > abs(iorb_mover) + 1.0
+    ):
+        primary_mover = (
+            "treasury_3m"
+        )
+
+    elif (
+        abs(iorb_mover)
+        > abs(treasury_mover) + 1.0
+    ):
+        primary_mover = (
+            "iorb"
+        )
+
+    else:
+        primary_mover = (
+            "mixed"
+        )
+
+    # ---------------------------------------------------------
+    # PERSISTENCE
+    # ---------------------------------------------------------
+    #
+    # Use the PRIOR observations as the reference distribution.
+    # The current extreme observation therefore does not move
+    # its own 95th/99th-percentile threshold.
+    # ---------------------------------------------------------
+
+    prior_values = [
+        row[3]
+        for row in history[
+            -(lookback + 1):-1
+        ]
+    ]
+
+    def percentile_threshold(
+        values: list[float],
+        percentile: float,
+    ) -> float | None:
+
+        if not values:
+            return None
+
+        ordered = sorted(
+            values
+        )
+
+        index = round(
+            (len(ordered) - 1)
+            * percentile
+        )
+
+        return ordered[
+            index
+        ]
+
+    threshold_95 = percentile_threshold(
+        prior_values,
+        0.95,
+    )
+
+    threshold_99 = percentile_threshold(
+        prior_values,
+        0.99,
+    )
+
+    def consecutive_above(
+        threshold: float | None,
+    ) -> int:
+
+        if threshold is None:
+            return 0
+
+        count = 0
+
+        for row in reversed(
+            history
+        ):
+            if row[3] >= threshold:
+                count += 1
+            else:
+                break
+
+        return count
+
+    return TreasuryIorbOutlierDiagnostic(
+        triggered=
+            abs(pricing.zscore)
+            >= z_threshold,
+
+        observation_date=
+            observation_date,
+
+        spread_bp=
+            spread_bp,
+
+        spread_zscore=
+            pricing.zscore,
+
+        spread_percentile=
+            pricing.percentile,
+
+        treasury_3m_percent=
+            treasury_rate,
+
+        iorb_percent=
+            iorb_rate,
+
+        treasury_change_1d_bp=
+            treasury_change_1d,
+
+        treasury_change_5d_bp=
+            treasury_change_5d,
+
+        treasury_change_20d_bp=
+            treasury_change_20d,
+
+        iorb_change_1d_bp=
+            iorb_change_1d,
+
+        iorb_change_5d_bp=
+            iorb_change_5d,
+
+        iorb_change_20d_bp=
+            iorb_change_20d,
+
+        spread_change_1d_bp=
+            spread_change_1d,
+
+        spread_change_5d_bp=
+            spread_change_5d,
+
+        spread_change_20d_bp=
+            spread_change_20d,
+
+        consecutive_above_95th=
+            consecutive_above(
+                threshold_95
+            ),
+
+        consecutive_above_99th=
+            consecutive_above(
+                threshold_99
+            ),
+
+        primary_mover=
+            primary_mover,
+    )
 
 # =============================================================
 # TREASURY BILL SUPPLY

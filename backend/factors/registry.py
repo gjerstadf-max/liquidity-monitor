@@ -63,14 +63,15 @@ from backend.assessments.global_dollar_funding import (
 # TYPES
 # =============================================================
 
+from datetime import date
 
 AssessmentBuilder = Callable[
-    [],
+    [date | None],
     Assessment,
 ]
 
 WhatMattersBuilder = Callable[
-    [],
+    [date | None],
     str,
 ]
 

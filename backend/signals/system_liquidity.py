@@ -34,8 +34,12 @@ def evaluate_system_liquidity_signal(
     conservative.
     """
 
-    history = system_liquidity_history_metrics()
-    current = system_liquidity_metrics()
+    history = system_liquidity_history_metrics(
+        as_of_date=as_of_date
+    )
+    current = system_liquidity_metrics(
+        as_of_date=as_of_date
+    )
 
     percentile = history.percentile_52_week
     zscore = history.zscore_52_week

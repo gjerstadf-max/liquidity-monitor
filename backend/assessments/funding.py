@@ -1,3 +1,6 @@
+from datetime import date
+
+
 from backend.assessments.models import Assessment
 from backend.signals.funding import (
     evaluate_funding_signal,
@@ -20,10 +23,14 @@ SEVERITY_CONFIDENCE = {
 }
 
 
-def assess_funding() -> Assessment:
+def assess_funding(
+    as_of_date: date | None = None,
+) -> Assessment:
 
     signal = (
-        evaluate_funding_signal()
+        evaluate_funding_signal(
+            as_of_date=as_of_date
+        )
     )
 
 

@@ -1,4 +1,7 @@
+
 from __future__ import annotations
+
+from datetime import date
 
 from backend.assessments.models import Assessment
 from backend.signals.commercial_paper import (
@@ -22,10 +25,14 @@ SEVERITY_CONFIDENCE = {
 }
 
 
-def assess_commercial_paper() -> Assessment:
+def assess_commercial_paper(
+    as_of_date: date | None = None,
+) -> Assessment:
 
     signal = (
-        evaluate_commercial_paper_signal()
+        evaluate_commercial_paper_signal(
+            as_of_date=as_of_date
+        )
     )
 
     return Assessment(

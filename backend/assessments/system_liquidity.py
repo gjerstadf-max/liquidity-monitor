@@ -1,3 +1,6 @@
+from datetime import date
+
+
 from backend.assessments.models import Assessment
 from backend.signals.system_liquidity import (
     evaluate_system_liquidity_signal,
@@ -20,10 +23,14 @@ SEVERITY_CONFIDENCE = {
 }
 
 
-def assess_system_liquidity() -> Assessment:
+def assess_system_liquidity(
+    as_of_date: date | None = None,
+) -> Assessment:
 
     signal = (
-        evaluate_system_liquidity_signal()
+        evaluate_system_liquidity_signal(
+            as_of_date=as_of_date
+        )
     )
 
 

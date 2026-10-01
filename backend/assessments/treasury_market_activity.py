@@ -1,3 +1,6 @@
+from datetime import date
+
+
 from backend.assessments.models import (
     Assessment,
 )
@@ -33,7 +36,9 @@ SEVERITY_CONFIDENCE = {
 # =============================================================
 
 
-def assess_treasury_market_activity() -> Assessment:
+def assess_treasury_market_activity(
+    as_of_date: date | None = None,
+) -> Assessment:
     """
     Convert the Treasury Market Activity signal into
     a qualitative assessment.
@@ -47,7 +52,9 @@ def assess_treasury_market_activity() -> Assessment:
     """
 
     signal = (
-        evaluate_treasury_market_activity_signal()
+        evaluate_treasury_market_activity_signal(
+            as_of_date=as_of_date
+        )
     )
 
     return Assessment(

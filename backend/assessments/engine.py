@@ -11,11 +11,11 @@ from backend.factors.registry import (
     FACTOR_REGISTRY,
 )
 
+from datetime import date
 
 # =============================================================
 # OVERALL VERDICT
 # =============================================================
-
 
 def _overall_verdict(
     assessments: list[Assessment],
@@ -415,6 +415,7 @@ def _overall_summary(
 
 
 def build_liquidity_assessment(
+    as_of_date: date | None = None,
 ) -> LiquidityAssessment:
     """
     Build the Liquidity Monitor qualitative assessment
@@ -435,7 +436,7 @@ def build_liquidity_assessment(
                 definition.display_name,
 
             assessment=
-                definition.assessor(),
+                definition.assessor(as_of_date),
         )
 
         for definition

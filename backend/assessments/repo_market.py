@@ -1,3 +1,6 @@
+from datetime import date
+
+
 from backend.assessments.models import Assessment
 from backend.signals.repo_market import (
     evaluate_repo_market_signal,
@@ -20,10 +23,14 @@ SEVERITY_CONFIDENCE = {
 }
 
 
-def assess_repo_market() -> Assessment:
+def assess_repo_market(
+    as_of_date: date | None = None,
+) -> Assessment:
 
     signal = (
-        evaluate_repo_market_signal()
+        evaluate_repo_market_signal(
+            as_of_date=as_of_date
+        )
     )
 
 

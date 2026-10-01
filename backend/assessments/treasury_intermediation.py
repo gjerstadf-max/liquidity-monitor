@@ -1,3 +1,6 @@
+from datetime import date
+
+
 from backend.assessments.models import Assessment
 
 from backend.signals.treasury_intermediation import (
@@ -31,7 +34,9 @@ SEVERITY_CONFIDENCE = {
 # =============================================================
 
 
-def assess_treasury_intermediation() -> Assessment:
+def assess_treasury_intermediation(
+    as_of_date: date | None = None,
+) -> Assessment:
     """
     Convert the validated Treasury Intermediation
     signal into a qualitative assessment.
@@ -40,7 +45,9 @@ def assess_treasury_intermediation() -> Assessment:
     """
 
     signal = (
-        evaluate_treasury_intermediation_signal()
+        evaluate_treasury_intermediation_signal(
+            as_of_date=as_of_date
+        )
     )
 
     return Assessment(
