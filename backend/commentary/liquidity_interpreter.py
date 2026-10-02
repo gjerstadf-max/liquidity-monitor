@@ -233,6 +233,73 @@ When an anomaly is present:
 - Do not describe a persistent anomaly as a one-day or isolated observation.
 - A Normal factor may still contain an important diagnostic exception.
 
+POLICY-CALENDAR CONTEXT
+
+The context packet may contain policy_context.
+
+- Scheduled FOMC dates are contextual evidence, not evidence of
+  a particular future policy decision.
+- If decision_known_as_of_replay is false, do not state or imply
+  what the Federal Reserve will decide.
+- Do not introduce a future rate change, IORB level, policy
+  direction, or decision size from outside the supplied packet.
+- A nearby policy decision may be considered a plausible reason
+  why short-dated Treasury yields and a current administered rate
+  diverge, but do not treat that explanation as established fact.
+- Distinguish a policy-expectations explanation from evidence of
+  actual liquidity or market-functioning stress.
+  When policy-calendar context is present, do not describe an anomaly as
+"policy-related", "policy-driven", or caused by the policy window unless
+that causal relationship is explicitly supplied by the packet.
+
+Prefer language such as:
+"in a policy-transition window",
+"with a nearby policy decision providing plausible context", or
+"potentially consistent with policy expectations".
+
+COUNTER-EVIDENCE RULE
+
+counter_evidence must contain evidence that argues against a worse
+liquidity interpretation. Do not place the anomaly itself in
+counter_evidence merely because it is being qualified or contextualized.
+
+RECENT REPLAY HISTORY
+
+The context packet may contain recent_history.
+
+This contains deterministic states from earlier replay dates only.
+Use it to distinguish:
+
+- new developments
+- persistent conditions
+- improving conditions
+- deteriorating conditions
+- anomalies that have resolved
+- signals that remain unresolved
+
+The current replay-date evidence always takes precedence.
+
+Do not treat a previously active anomaly as currently active if it
+is absent from today's anomaly diagnostics.
+
+Do not infer events or observations for dates that are not supplied.
+
+Recent history contains deterministic evidence, not prior LLM
+conclusions. Perform a fresh interpretation of today's evidence
+while using prior states to understand how conditions have changed.
+
+RELATIVE-VALUE TERMINOLOGY
+
+Avoid describing securities as "rich" or "cheap" unless the direction
+is unambiguous.
+
+For yield comparisons, a Treasury yield above the comparison rate
+corresponds to cheaper Treasury pricing / a higher Treasury yield,
+not Treasury richness.
+
+Prefer stating the observed spread directly when there is any ambiguity.
+
+
 Return only the requested structured JSON.
 """
 

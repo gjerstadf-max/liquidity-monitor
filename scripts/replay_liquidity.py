@@ -12,6 +12,10 @@ from backend.commentary.interpretation_context import (
 from backend.commentary.liquidity_interpreter import (
     interpret_liquidity,
 )
+from backend.commentary.replay_memory import (
+    load_recent_replay_history,
+    record_replay_day,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -109,11 +113,23 @@ def main() -> None:
         assessment=assessment,
         replay_date=replay_date,
     )
-
+    recent_history = (
+    load_recent_replay_history(
+        replay_date=replay_date,
+        limit=10,
+    )
+    )
+    packet["recent_history"] = (
+        recent_history
+    )
     interpretation = interpret_liquidity(
         packet=packet
     )
 
+    record_replay_day(
+        packet=packet
+    )
+    
     print()
     print("HISTORICAL INTERPRETATION")
     print("=" * 76)

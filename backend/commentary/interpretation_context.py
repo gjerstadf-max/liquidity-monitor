@@ -17,6 +17,9 @@ from backend.factors.registry import (
 from backend.commentary.anomaly_context import (
     build_anomaly_diagnostics,
 )
+from backend.commentary.policy_context import (
+    build_policy_context,
+)
 
 
 # =============================================================
@@ -173,6 +176,11 @@ def build_interpretation_context(
         as_of_date=replay_date
     )
 )
+    policy_context = (
+    build_policy_context(replay_date)
+    if replay_date is not None
+    else None
+)
 
 
     # ---------------------------------------------------------
@@ -194,6 +202,8 @@ def build_interpretation_context(
     "anomaly_diagnostics":
         anomaly_diagnostics,
 
+    "policy_context":
+        policy_context,
 
     "generated_at":
         datetime.now(

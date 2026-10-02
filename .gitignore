@@ -31,3 +31,5 @@ data/
 *.db
 *.sqlite
 *.sqlite3
+data/replay_memory.json
+data/replay_hypotheses.json
