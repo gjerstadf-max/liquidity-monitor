@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import json
 
-from datetime import date
+from datetime import date,timedelta
+
 from pathlib import Path
 from typing import Any
 
@@ -116,6 +117,20 @@ def _next_hypothesis_id(
         f"{prefix}{sequence:02d}"
     )
 
+def _add_business_days(
+    start_date: date,
+    business_days: int,
+) -> date:
+    current = start_date
+    added = 0
+
+    while added < business_days:
+        current += timedelta(days=1)
+
+        if current.weekday() < 5:
+            added += 1
+
+    return current
 
 def create_hypothesis(
     *,
@@ -144,6 +159,17 @@ def create_hypothesis(
     ledger = _load_ledger(
         memory_path
     )
+    for existing in ledger["hypotheses"]:
+        if (
+            existing.get("created_date")
+            == created_date.isoformat()
+            and existing.get(
+                "hypothesis",
+                "",
+            ).strip()
+            == hypothesis.strip()
+        ):
+            return existing
 
     hypothesis_id = _next_hypothesis_id(
         created_date,
@@ -244,14 +270,31 @@ def append_hypothesis_evaluation(
             [],
         )
 
-        if any(
-            item.get("review_date")
-            == review_date.isoformat()
-            for item in evaluations
-        ):
+        for existing in evaluations:
+            if (
+                existing.get("review_date")
+                != review_date.isoformat()
+            ):
+                continue
+
+            same_evaluation = (
+                existing.get("status")
+                == status
+                and existing.get("evidence")
+                == list(evidence)
+                and existing.get("rationale")
+                == rationale
+                and existing.get("confidence")
+                == confidence
+            )
+
+            if same_evaluation:
+                return existing
+
             raise ValueError(
-                "Hypothesis already has an evaluation "
-                f"for {review_date.isoformat()}."
+                "Hypothesis already has a different "
+                "evaluation for "
+                f"{review_date.isoformat()}."
             )
 
         evaluation = {
@@ -372,3 +415,94 @@ def load_active_hypotheses(
     )
 
     return visible[-limit:]
+def apply_hypothesis_outputs(
+    *,
+    replay_date: date,
+    proposed_hypotheses: list[dict[str, Any]],
+    hypothesis_evaluations: list[dict[str, Any]],
+    visible_hypotheses: list[dict[str, Any]],
+    path: Path | None = None,
+) -> dict[str, int]:
+    """
+    Validate and persist the model's hypothesis outputs.
+
+    The model may evaluate only hypotheses that were
+    visible in the replay packet for this date.
+    """
+
+    visible_ids = {
+        item["id"]
+        for item in visible_hypotheses
+        if item.get("id")
+    }
+
+    evaluated = 0
+    created = 0
+
+    for evaluation in hypothesis_evaluations:
+        hypothesis_id = evaluation[
+            "hypothesis_id"
+        ]
+
+        if hypothesis_id not in visible_ids:
+            raise ValueError(
+                "Model attempted to evaluate "
+                "a hypothesis that was not visible "
+                f"on {replay_date.isoformat()}: "
+                f"{hypothesis_id}"
+            )
+
+        append_hypothesis_evaluation(
+            hypothesis_id=hypothesis_id,
+            review_date=replay_date,
+            status=evaluation["status"],
+            evidence=evaluation["evidence"],
+            rationale=evaluation["rationale"],
+            confidence=evaluation.get(
+                "confidence"
+            ),
+            path=path,
+        )
+
+        evaluated += 1
+
+    for hypothesis in proposed_hypotheses:
+        review_after_days = int(
+            hypothesis[
+                "review_after_days"
+            ]
+        )
+
+        review_by = _add_business_days(
+            replay_date,
+            review_after_days,
+        )
+
+        create_hypothesis(
+            created_date=replay_date,
+            hypothesis=
+                hypothesis["hypothesis"],
+            confidence=
+                hypothesis["confidence"],
+            supporting_evidence=
+                hypothesis[
+                    "supporting_evidence"
+                ],
+            expected_if_true=
+                hypothesis[
+                    "expected_if_true"
+                ],
+            would_weaken=
+                hypothesis[
+                    "would_weaken"
+                ],
+            review_by=review_by,
+            path=path,
+        )
+
+        created += 1
+
+    return {
+        "created": created,
+        "evaluated": evaluated,
+    }

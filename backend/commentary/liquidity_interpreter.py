@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 import os
 from typing import Any
+from unittest import result
 
 from openai import OpenAI
 
@@ -14,6 +15,7 @@ from backend.commentary.interpretation_context import (
     build_interpretation_context,
 )
 
+from copy import deepcopy
 
 MODEL = os.getenv(
     "LIQUIDITY_INTERPRETER_MODEL",
@@ -35,6 +37,18 @@ class LiquidityInterpretation:
     what_to_watch: list[str]
     model: str
     fallback_used: bool
+
+    proposed_hypotheses: list[
+        dict[str, Any]
+    ] = field(
+        default_factory=list
+    )
+
+    hypothesis_evaluations: list[
+        dict[str, Any]
+    ] = field(
+        default_factory=list
+    )
 
 
 # =============================================================
@@ -299,6 +313,111 @@ not Treasury richness.
 
 Prefer stating the observed spread directly when there is any ambiguity.
 
+HYPOTHESIS DISCIPLINE
+
+In historical replay, the context packet may contain active_hypotheses.
+
+A hypothesis is a tentative economic explanation for an important
+observation or anomaly. It is not a factor verdict and must never
+change a deterministic verdict.
+
+New hypotheses:
+
+- Propose a hypothesis only when there is something economically
+  meaningful that requires explanation.
+- Do not manufacture hypotheses merely to fill the output.
+- A hypothesis must be falsifiable using observations that could
+  reasonably arrive on subsequent replay dates.
+- State only explanations that are consistent with evidence in the
+  supplied packet.
+- Do not introduce future facts, outcomes, policy decisions, or
+  information unavailable on replay_date.
+- Distinguish "plausible" from "established".
+- Normally propose no more than one hypothesis. Two are permitted
+  only when genuinely distinct explanations need to be tracked.
+- supporting_evidence must contain current evidence that makes the
+  hypothesis plausible.
+- expected_if_true must describe observations that should become
+  visible later if the hypothesis is broadly correct.
+- would_weaken must describe observations that would materially
+  challenge the hypothesis.
+- review_after_days should indicate when the hypothesis should
+  reasonably be reconsidered.
+
+Existing hypotheses:
+
+- Evaluate only hypotheses supplied in active_hypotheses.
+- Never invent a hypothesis_id.
+- Do not rewrite the original hypothesis.
+- Produce an evaluation only when current evidence materially
+  strengthens, weakens, partially supports, supports, rejects, or
+  resolves the hypothesis, or when its review horizon has been reached.
+- A new fact may support one part of a hypothesis while leaving
+  another unresolved. Use partially_supported when appropriate.
+- "supported" should require substantial realization of the
+  hypothesis's expected evidence.
+- "rejected" should require meaningful contradictory evidence.
+- "resolved" means the question is no longer economically relevant,
+  not necessarily that the hypothesis was correct.
+
+PERSISTENT NON-NORMAL SIGNALS
+
+A persistent Watch, Elevated, or Stressed factor may require a
+hypothesis even when no anomaly diagnostic is active.
+
+When the structured-output schema requires a hypothesis because a
+non-Normal factor has persisted:
+
+- Form a tentative explanation for why that factor remains abnormal.
+- Do not merely restate the factor verdict.
+- Identify what evidence would indicate the condition is temporary,
+  structural, or beginning to transmit into related markets.
+- Use related Normal factors as tests of whether the pressure is
+  isolated or spreading.
+- Do not assume that persistence alone means conditions are worsening.
+
+HYPOTHESIS CREATION TRIGGER
+
+When mode="historical_replay" and anomaly_diagnostics contains one or
+more triggered anomalies:
+
+- If you advance any plausible economic explanation for an anomaly,
+  you MUST also express that explanation as a proposed_hypothesis.
+- Do not leave a meaningful explanatory theory only in the narrative.
+- The hypothesis must remain tentative and falsifiable.
+- If the supplied evidence genuinely does not support any plausible
+  explanation, proposed_hypotheses may remain empty.
+- Do not create a hypothesis merely because a factor is Watch,
+  Elevated, or Stressed. The purpose is to track explanations that
+  can be tested through subsequent observations.
+
+
+If an active hypothesis already covers the same economic explanation,
+do not create a restated version of that hypothesis. Evaluate the
+existing hypothesis instead.
+
+REVIEW HORIZON
+
+Choose review_after_days based on when meaningful evidence should
+reasonably become available.
+
+If a hypothesis is tied to a known scheduled event or transition,
+the review horizon should normally be no later than one day after
+that event unless the hypothesis explicitly requires a longer window.
+
+A hypothesis may be evaluated before review_by when materially new
+evidence arrives.
+
+A useful hypothesis should connect:
+
+observed anomaly
+    -> plausible explanation
+    -> expected future behavior
+    -> evidence that would contradict it
+
+Do not simply restate the anomaly as the hypothesis.
+
+Hypotheses are analytical working theories, not authoritative facts.
 
 Return only the requested structured JSON.
 """
@@ -310,11 +429,13 @@ Return only the requested structured JSON.
 
 OUTPUT_SCHEMA = {
     "type": "object",
+
     "properties": {
         "headline": {
             "type": "string",
             "maxLength": 180,
         },
+
         "overall_comment": {
             "type": "array",
             "items": {
@@ -324,6 +445,7 @@ OUTPUT_SCHEMA = {
             "minItems": 2,
             "maxItems": 2,
         },
+
         "primary_drivers": {
             "type": "array",
             "items": {
@@ -332,6 +454,7 @@ OUTPUT_SCHEMA = {
             },
             "maxItems": 2,
         },
+
         "counter_evidence": {
             "type": "array",
             "items": {
@@ -340,6 +463,7 @@ OUTPUT_SCHEMA = {
             },
             "maxItems": 2,
         },
+
         "what_to_watch": {
             "type": "array",
             "items": {
@@ -348,17 +472,297 @@ OUTPUT_SCHEMA = {
             },
             "maxItems": 3,
         },
+
+        "proposed_hypotheses": {
+            "type": "array",
+            "maxItems": 2,
+
+            "items": {
+                "type": "object",
+
+                "properties": {
+                    "hypothesis": {
+                        "type": "string",
+                        "maxLength": 500,
+                    },
+
+                    "confidence": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Moderate",
+                            "High",
+                        ],
+                    },
+
+                    "supporting_evidence": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "maxLength": 260,
+                        },
+                        "minItems": 1,
+                        "maxItems": 4,
+                    },
+
+                    "expected_if_true": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "maxLength": 260,
+                        },
+                        "minItems": 1,
+                        "maxItems": 4,
+                    },
+
+                    "would_weaken": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "maxLength": 260,
+                        },
+                        "minItems": 1,
+                        "maxItems": 4,
+                    },
+
+                    "review_after_days": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 20,
+                    },
+                },
+
+                "required": [
+                    "hypothesis",
+                    "confidence",
+                    "supporting_evidence",
+                    "expected_if_true",
+                    "would_weaken",
+                    "review_after_days",
+                ],
+
+                "additionalProperties":
+                    False,
+            },
+        },
+
+        "hypothesis_evaluations": {
+            "type": "array",
+            "maxItems": 10,
+
+            "items": {
+                "type": "object",
+
+                "properties": {
+                    "hypothesis_id": {
+                        "type": "string",
+                        "maxLength": 40,
+                    },
+
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "active",
+                            "strengthened",
+                            "weakened",
+                            "partially_supported",
+                            "supported",
+                            "rejected",
+                            "resolved",
+                        ],
+                    },
+
+                    "evidence": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "maxLength": 260,
+                        },
+                        "minItems": 1,
+                        "maxItems": 4,
+                    },
+
+                    "rationale": {
+                        "type": "string",
+                        "maxLength": 360,
+                    },
+
+                    "confidence": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Moderate",
+                            "High",
+                        ],
+                    },
+                },
+
+                "required": [
+                    "hypothesis_id",
+                    "status",
+                    "evidence",
+                    "rationale",
+                    "confidence",
+                ],
+
+                "additionalProperties":
+                    False,
+            },
+        },
     },
+
     "required": [
         "headline",
         "overall_comment",
         "primary_drivers",
         "counter_evidence",
         "what_to_watch",
+        "proposed_hypotheses",
+        "hypothesis_evaluations",
     ],
+
     "additionalProperties": False,
 }
 
+def _persistent_non_normal_factors(
+    packet: dict[str, Any],
+    minimum_prior_observations: int = 2,
+) -> list[str]:
+    """
+    Return current non-Normal factors that were also
+    non-Normal in the required number of immediately
+    preceding replay states.
+    """
+
+    framework = packet.get(
+        "framework",
+        {},
+    )
+
+    current_factors = set(
+        framework.get(
+            "non_normal_factors",
+            [],
+        )
+    )
+
+    if not current_factors:
+        return []
+
+    recent_history = packet.get(
+        "recent_history",
+        [],
+    )
+
+    persistent: list[str] = []
+
+    for factor in current_factors:
+        consecutive_prior = 0
+
+        for prior_day in reversed(
+            recent_history
+        ):
+            prior_non_normal = set(
+                prior_day.get(
+                    "non_normal_factors",
+                    [],
+                )
+            )
+
+            if factor not in prior_non_normal:
+                break
+
+            consecutive_prior += 1
+
+        if (
+            consecutive_prior
+            >= minimum_prior_observations
+        ):
+            persistent.append(
+                factor
+            )
+
+    return sorted(
+        persistent
+    )
+
+
+def _output_schema_for_packet(
+    packet: dict[str, Any],
+) -> dict[str, Any]:
+    """
+    Tighten the structured-output contract when a
+    historical replay contains an unexplained anomaly.
+    """
+
+    schema = deepcopy(
+        OUTPUT_SCHEMA
+    )
+
+    is_historical_replay = (
+        packet.get("mode")
+        == "historical_replay"
+    )
+
+    anomaly_diagnostics = (
+        packet.get(
+            "anomaly_diagnostics",
+            [],
+        )
+    )
+
+    active_hypotheses = (
+        packet.get(
+            "active_hypotheses",
+            [],
+        )
+    )
+
+    persistent_non_normal = (
+        _persistent_non_normal_factors(
+            packet
+    )
+)
+
+    hypothesis_required = (
+        is_historical_replay
+        and not bool(
+            active_hypotheses
+        )
+        and (
+            bool(
+                anomaly_diagnostics
+            )
+            or bool(
+                persistent_non_normal
+            )
+        )
+    )
+
+    if hypothesis_required:
+        hypothesis_schema = deepcopy(
+            schema[
+                "properties"
+            ][
+                "proposed_hypotheses"
+            ][
+                "items"
+            ]
+        )
+
+        schema[
+            "properties"
+        ][
+            "required_hypothesis"
+        ] = hypothesis_schema
+
+        schema[
+            "required"
+        ].append(
+            "required_hypothesis"
+        )
+
+    return schema
 
 # =============================================================
 # FALLBACK
@@ -414,26 +818,33 @@ def _fallback_interpretation(
 
     return LiquidityInterpretation(
         headline=
-            f"Overall liquidity conditions: {verdict}.",
+            result["headline"],
 
         overall_comment=
-            summary,
+            "\n\n".join(
+                result["overall_comment"]
+            ),
 
         primary_drivers=
-            primary_drivers,
+            result["primary_drivers"],
 
         counter_evidence=
-            normal_factors[:4],
+            result["counter_evidence"],
 
         what_to_watch=
-            watch_factors[:4],
+            result["what_to_watch"],
 
         model=
-            "deterministic-fallback",
+            MODEL,
 
         fallback_used=
-            True,
-    )
+            False,
+
+        proposed_hypotheses=[],
+
+        hypothesis_evaluations=[],
+
+)
 
 
 # =============================================================
@@ -494,7 +905,9 @@ def interpret_liquidity(
                         "type": "json_schema",
                         "name": "liquidity_interpretation",
                         "strict": True,
-                        "schema": OUTPUT_SCHEMA,
+                        "schema": _output_schema_for_packet(
+                            packet
+                        ),
                     }
                 },
             )
@@ -503,6 +916,77 @@ def interpret_liquidity(
         result = json.loads(
             response.output_text
         )
+        proposed_hypotheses = list(
+            result.get(
+                "proposed_hypotheses",
+                [],
+            )
+        )
+
+        required_hypothesis = (
+            result.get(
+                "required_hypothesis"
+            )
+        )
+
+        if  required_hypothesis is not None:
+                proposed_hypotheses = [
+                    required_hypothesis
+                ]
+
+                proposed_hypotheses.insert(
+                0,
+                required_hypothesis,
+            )
+
+                proposed_hypotheses = list(
+                    result.get(
+                "proposed_hypotheses",
+                [],
+            )
+        )
+
+        required_hypothesis = (
+            result.get(
+                "required_hypothesis"
+            )
+        )
+
+        if (
+            required_hypothesis is not None
+            and required_hypothesis
+            not in proposed_hypotheses
+        ):
+            proposed_hypotheses.insert(
+                0,
+                required_hypothesis,
+            )
+
+        hypothesis_required = (
+            packet.get("mode")
+            == "historical_replay"
+            and bool(
+                packet.get(
+                    "anomaly_diagnostics",
+                    [],
+                )
+            )
+            and not bool(
+                packet.get(
+                    "active_hypotheses",
+                    [],
+                )
+            )
+        )
+
+        if (
+            hypothesis_required
+            and not proposed_hypotheses
+        ):
+            raise ValueError(
+                "Historical replay anomaly "
+                "requires a proposed hypothesis."
+            )
 
         return LiquidityInterpretation(
             headline=
@@ -512,7 +996,7 @@ def interpret_liquidity(
                 "\n\n".join(
                     result["overall_comment"]
                 ),
-    
+
             primary_drivers=
                 result["primary_drivers"],
 
@@ -527,6 +1011,15 @@ def interpret_liquidity(
 
             fallback_used=
                 False,
+
+            proposed_hypotheses=
+                proposed_hypotheses,
+
+            hypothesis_evaluations=
+                result.get(
+                    "hypothesis_evaluations",
+                    [],
+                ),
         )
 
     except Exception as exc:

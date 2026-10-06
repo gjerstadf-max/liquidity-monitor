@@ -30,6 +30,14 @@ from backend.commentary.replay_hypotheses import (
     load_active_hypotheses,
 )
 
+import pytest
+
+from backend.commentary.replay_hypotheses import (
+    apply_hypothesis_outputs,
+    create_hypothesis,
+    load_active_hypotheses,
+)
+
 
 REPLAY_DATE = date(2026, 9, 15)
 
@@ -528,3 +536,95 @@ def test_hypothesis_memory_blocks_future_information(
     )
 
     assert history_sep_18 == []
+
+def test_hypothesis_creation_is_idempotent(
+    tmp_path,
+):
+    ledger_path = (
+        tmp_path
+        / "replay_hypotheses.json"
+    )
+
+    kwargs = {
+        "created_date":
+            date(2026, 9, 14),
+
+        "hypothesis":
+            "Test hypothesis.",
+
+        "confidence":
+            "Moderate",
+
+        "supporting_evidence":
+            ["Evidence."],
+
+        "expected_if_true":
+            ["Expected."],
+
+        "would_weaken":
+            ["Weakener."],
+
+        "path":
+            ledger_path,
+    }
+
+    first = create_hypothesis(
+        **kwargs
+    )
+
+    second = create_hypothesis(
+        **kwargs
+    )
+
+    assert first["id"] == second["id"]
+
+    history = load_active_hypotheses(
+        replay_date=date(
+            2026,
+            9,
+            15,
+        ),
+        path=ledger_path,
+    )
+
+    assert len(history) == 1
+def test_model_cannot_evaluate_unseen_hypothesis(
+    tmp_path,
+):
+    ledger_path = (
+        tmp_path
+        / "replay_hypotheses.json"
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="was not visible",
+    ):
+        apply_hypothesis_outputs(
+            replay_date=date(
+                2026,
+                9,
+                15,
+            ),
+            proposed_hypotheses=[],
+            hypothesis_evaluations=[
+                {
+                    "hypothesis_id":
+                        "H-20260999-99",
+
+                    "status":
+                        "strengthened",
+
+                    "evidence":
+                        ["Invented evidence."],
+
+                    "rationale":
+                        "Invalid evaluation.",
+
+                    "confidence":
+                        "Moderate",
+                }
+            ],
+            visible_hypotheses=[],
+            path=ledger_path,
+        )

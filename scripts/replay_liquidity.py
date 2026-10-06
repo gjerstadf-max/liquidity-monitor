@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+
 from datetime import date
 
 from backend.assessments.engine import (
@@ -15,6 +16,14 @@ from backend.commentary.liquidity_interpreter import (
 from backend.commentary.replay_memory import (
     load_recent_replay_history,
     record_replay_day,
+)
+from backend.commentary.replay_hypotheses import (
+    apply_hypothesis_outputs,
+    load_active_hypotheses,
+)
+from backend.commentary.liquidity_interpreter import (
+    _persistent_non_normal_factors,
+    interpret_liquidity,
 )
 
 
@@ -114,22 +123,47 @@ def main() -> None:
         replay_date=replay_date,
     )
     recent_history = (
-    load_recent_replay_history(
-        replay_date=replay_date,
-        limit=10,
-    )
+        load_recent_replay_history(
+            replay_date=replay_date,
+            limit=10,
+        )
     )
     packet["recent_history"] = (
         recent_history
     )
+    active_hypotheses = (
+        load_active_hypotheses(
+            replay_date=replay_date,
+            limit=10,
+        )
+    )
+    packet["active_hypotheses"] = (
+        active_hypotheses
+    )
+    packet["persistent_non_normal_factors"] = (
+    _persistent_non_normal_factors(
+        packet
+    )
+)
     interpretation = interpret_liquidity(
         packet=packet
     )
+    hypothesis_updates = (
+        apply_hypothesis_outputs(
+            replay_date=replay_date,
+            proposed_hypotheses=
+                interpretation.proposed_hypotheses,
+            hypothesis_evaluations=
+                interpretation.hypothesis_evaluations,
+            visible_hypotheses=
+                active_hypotheses,
+        )
+)
 
     record_replay_day(
         packet=packet
     )
-    
+
     print()
     print("HISTORICAL INTERPRETATION")
     print("=" * 76)
@@ -160,6 +194,76 @@ def main() -> None:
 
         for item in interpretation.what_to_watch:
             print(f"- {item}")
+
+    if interpretation.proposed_hypotheses:
+        print()
+        print("PROPOSED HYPOTHESES")
+
+        for index, hypothesis in enumerate(
+            interpretation.proposed_hypotheses,
+            start=1,
+        ):
+            print()
+            print(
+                f"Hypothesis {index}: "
+                f"{hypothesis['hypothesis']}"
+            )
+
+            print(
+                f"Confidence: "
+                f"{hypothesis['confidence']}"
+            )
+
+            print("Supporting evidence:")
+            for item in hypothesis[
+                "supporting_evidence"
+            ]:
+                print(f"  - {item}")
+
+            print("Expected if true:")
+            for item in hypothesis[
+                "expected_if_true"
+            ]:
+                print(f"  - {item}")
+
+            print("Would weaken:")
+            for item in hypothesis[
+                "would_weaken"
+            ]:
+                print(f"  - {item}")
+
+            print(
+                "Review after: "
+                f"{hypothesis['review_after_days']} "
+                "day(s)"
+            )
+
+    if interpretation.hypothesis_evaluations:
+        print()
+        print("HYPOTHESIS EVALUATIONS")
+
+        for evaluation in (
+            interpretation.hypothesis_evaluations
+        ):
+            print()
+            print(
+                f"{evaluation['hypothesis_id']}: "
+                f"{evaluation['status']}"
+            )
+
+            print(
+                f"Confidence: "
+                f"{evaluation['confidence']}"
+            )
+
+            print(
+                f"Rationale: "
+                f"{evaluation['rationale']}"
+            )
+
+            print("Evidence:")
+            for item in evaluation["evidence"]:
+                print(f"  - {item}")
 
     print()
     print(
