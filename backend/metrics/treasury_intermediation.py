@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+
+from datetime import date, timedelta
+
 from decimal import Decimal
 from statistics import mean, pstdev
 
@@ -12,7 +14,6 @@ from backend.database.models import (
     Indicator,
     Observation,
 )
-
 
 # =============================================================
 # DATA OBJECTS
@@ -66,6 +67,50 @@ class TreasuryIntermediationStatistics:
     fails_receive: MetricContext
     fails_deliver: MetricContext
     total_fails: MetricContext
+
+PRIMARY_DEALER_PUBLICATION_LAG_DAYS = 8
+
+
+def primary_dealer_public_release_date(
+    observation_date: date,
+) -> date:
+    """
+    Standard FR 2004 public-release schedule.
+
+    Weekly Primary Dealer observations are dated Wednesday
+    and are publicly released by the New York Fed the
+    following Thursday, approximately eight calendar days
+    later.
+
+    Holiday exceptions are not modeled here.
+    """
+    return (
+        observation_date
+        + timedelta(
+            days=PRIMARY_DEALER_PUBLICATION_LAG_DAYS
+        )
+    )
+
+
+def primary_dealer_observation_available(
+    observation_date: date,
+    replay_date: date,
+) -> bool:
+    """
+    Conservative date-only historical-replay rule.
+
+    Because the public release occurs around 4:15 p.m. ET,
+    an observation released on the replay date is treated
+    as unavailable until the next calendar date.
+    """
+    release_date = (
+        primary_dealer_public_release_date(
+            observation_date
+        )
+    )
+
+    return release_date < replay_date
+
 
 
 # =============================================================
@@ -137,9 +182,15 @@ def _load_intermediation_history(
     by the NY Fed. Missing values remain missing and are
     never converted to zero.
 
-    When as_of_date is supplied, only observations on or
-    before that date are used. This prevents look-ahead
-    bias in historical replay.
+    When as_of_date is supplied, only observations that
+    would have been publicly available before that replay
+    date are used.
+
+    Primary Dealer statistics are observed on Wednesday
+    and publicly released the following Thursday. Because
+    historical replay currently has date-only precision,
+    same-day releases are conservatively treated as
+    unavailable until the following date.
     """
 
     positions = _load_series(
@@ -186,7 +237,10 @@ def _load_intermediation_history(
         common_dates = {
             observation_date
             for observation_date in common_dates
-            if observation_date <= as_of_date
+            if primary_dealer_observation_available(
+                observation_date,
+                as_of_date,
+            )
         }
 
     if not common_dates:
@@ -627,6 +681,34 @@ def treasury_intermediation_statistics(
             ),
     )
 
+def test_primary_dealer_release_date():
+    assert (
+        primary_dealer_public_release_date(
+            date(2026, 9, 16)
+        )
+        == date(2026, 9, 24)
+    )
+
+def test_primary_dealer_replay_availability():
+    observation = date(
+        2026,
+        9,
+        16,
+    )
+
+    assert not (
+        primary_dealer_observation_available(
+            observation,
+            date(2026, 9, 24),
+        )
+    )
+
+    assert (
+        primary_dealer_observation_available(
+            observation,
+            date(2026, 9, 25),
+        )
+    )
 
 # =============================================================
 # DISPLAY HELPERS
