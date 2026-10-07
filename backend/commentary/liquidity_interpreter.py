@@ -584,7 +584,7 @@ OUTPUT_SCHEMA = {
 
                     "rationale": {
                         "type": "string",
-                        "maxLength": 360,
+                        "maxLength": 600,
                     },
 
                     "confidence": {
@@ -923,43 +923,45 @@ def interpret_liquidity(
             )
         )
 
-        required_hypothesis = (
-            result.get(
-                "required_hypothesis"
-            )
+        required_hypothesis = result.get(
+            "required_hypothesis"
         )
 
-        if  required_hypothesis is not None:
-                proposed_hypotheses = [
-                    required_hypothesis
-                ]
+        # When the schema required a hypothesis,
+        # that object is authoritative. Do not also
+        # preserve a semantically duplicate proposal
+        # returned in proposed_hypotheses.
+        if required_hypothesis is not None:
+            proposed_hypotheses = [
+                required_hypothesis
+            ]
 
-                proposed_hypotheses.insert(
-                0,
-                required_hypothesis,
-            )
+        # In the ordinary optional-hypothesis case,
+        # defensively remove exact normalized-text
+        # duplicates.
+        else:
+            unique_hypotheses = []
+            seen = set()
 
-                proposed_hypotheses = list(
-                    result.get(
-                "proposed_hypotheses",
-                [],
-            )
-        )
+            for hypothesis in proposed_hypotheses:
+                key = " ".join(
+                    hypothesis[
+                        "hypothesis"
+                    ]
+                    .lower()
+                    .split()
+                )
 
-        required_hypothesis = (
-            result.get(
-                "required_hypothesis"
-            )
-        )
+                if key in seen:
+                    continue
 
-        if (
-            required_hypothesis is not None
-            and required_hypothesis
-            not in proposed_hypotheses
-        ):
-            proposed_hypotheses.insert(
-                0,
-                required_hypothesis,
+                seen.add(key)
+                unique_hypotheses.append(
+                    hypothesis
+                )
+
+            proposed_hypotheses = (
+                unique_hypotheses
             )
 
         hypothesis_required = (
