@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+
+from datetime import date, datetime, time
+from zoneinfo import ZoneInfo
+
 from decimal import Decimal
 from statistics import mean, pstdev
 
@@ -9,6 +12,10 @@ from sqlalchemy import select
 
 from backend.database.connection import get_session
 from backend.database.models import Indicator, Observation
+
+from backend.services.freshness import (
+    expected_system_liquidity_observation_date,
+)
 
 
 # =============================================================
@@ -248,18 +255,35 @@ def build_system_liquidity_history(
     ) = _load_system_series()
 
     if as_of_date is not None:
+        replay_morning = datetime.combine(
+            as_of_date,
+            time(hour=9),
+            tzinfo=ZoneInfo(
+                "America/New_York"
+            ),
+        )
+
+        available_observation_date = (
+            expected_system_liquidity_observation_date(
+                now=replay_morning
+            )
+        )
+
         reserves = [
             (
                 observation_date,
                 value,
             )
-           for (
+            for (
                 observation_date,
                 value,
             )
             in reserves
-            if observation_date <= as_of_date
-      ]
+            if (
+                observation_date
+                <= available_observation_date
+            )
+    ]
 
     if not reserves:
         raise RuntimeError(

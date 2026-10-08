@@ -92,6 +92,37 @@ def test_system_liquidity_respects_historical_date():
         2,
     ) == 0.19
 
+def test_system_liquidity_respects_publication_lag():
+    before_release = (
+        system_liquidity_history_metrics(
+            as_of_date=date(
+                2026,
+                9,
+                17,
+            )
+        )
+    )
+
+    after_release = (
+        system_liquidity_history_metrics(
+            as_of_date=date(
+                2026,
+                9,
+                18,
+            )
+        )
+    )
+
+    assert (
+        before_release.observation_date
+        == date(2026, 9, 9)
+    )
+
+    assert (
+        after_release.observation_date
+        == date(2026, 9, 16)
+    )
+
 
 def test_full_assessment_replays_historical_state():
     assessment = build_liquidity_assessment(
