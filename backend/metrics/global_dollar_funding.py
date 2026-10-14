@@ -1,14 +1,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+
+from datetime import date,timedelta
+
 from decimal import Decimal
 
 from sqlalchemy import select
 
 from backend.database.connection import get_session
-from backend.database.models import Indicator, Observation
 
+from backend.database.models import (
+    Indicator,
+    Observation,
+    ObservationVintage,
+)
 
 # =============================================================
 # DATA OBJECT
@@ -69,7 +75,40 @@ def _load_series(
         )
         for row in rows
     ]
+def _load_vintage_series(
+    symbol: str,
+    vintage_date: date,
+) -> list[tuple[date, Decimal]]:
+    with get_session() as session:
+        rows = session.execute(
+            select(
+                ObservationVintage.observation_date,
+                ObservationVintage.value,
+            )
+            .join(Indicator)
+            .where(
+                Indicator.symbol == symbol,
+                ObservationVintage.vintage_date
+                == vintage_date,
+            )
+            .order_by(
+                ObservationVintage.observation_date
+            )
+        ).all()
 
+    if not rows:
+        raise RuntimeError(
+            "No vintage observations found for "
+            f"{symbol} on {vintage_date}."
+        )
+
+    return [
+        (
+            row[0],
+            row[1],
+        )
+        for row in rows
+    ]
 
 def _index_at_or_before(
     observations: list[
@@ -103,58 +142,78 @@ def global_dollar_funding_statistics(
     as_of_date: date | None = None,
 ) -> GlobalDollarFundingStatistics:
 
-    swaps = _load_series(
-        "central_bank_liquidity_swaps"
+    is_historical_replay = (
+    as_of_date is not None
     )
 
-    fima = _load_series(
-        "fima_repo"
-    )
+    if is_historical_replay:
+            vintage_date = (
+                as_of_date
+                - timedelta(days=1)
+            )
 
-    if as_of_date is None:
-        as_of_date = max(
-            swaps[-1][0],
-            fima[-1][0],
-        )
+            swaps = _load_vintage_series(
+                "central_bank_liquidity_swaps",
+                vintage_date,
+            )
+
+            fima = _load_vintage_series(
+                "fima_repo",
+                vintage_date,
+            )
+
+    else:
+            swaps = _load_series(
+                "central_bank_liquidity_swaps"
+            )
+
+            fima = _load_series(
+                "fima_repo"
+            )
+
+            as_of_date = max(
+                swaps[-1][0],
+                fima[-1][0],
+            )
 
     swap_index = _index_at_or_before(
-        swaps,
-        as_of_date,
-    )
-
-    fima_index = _index_at_or_before(
-        fima,
-        as_of_date,
-    )
-
-    if (
-        swap_index is None
-        or fima_index is None
-    ):
-        raise RuntimeError(
-            "Insufficient global-dollar "
-            "funding data."
+            swaps,
+            as_of_date,
         )
 
+    fima_index = _index_at_or_before(
+            fima,
+            as_of_date,
+        )
+
+    if (
+            swap_index is None
+            or fima_index is None
+        ):
+            raise RuntimeError(
+                "Insufficient global-dollar "
+                "funding data."
+            )
+
     swap_date, swap_value = (
-        swaps[swap_index]
-    )
+            swaps[swap_index]
+        )
 
     fima_date, fima_value = (
-        fima[fima_index]
-    )
+            fima[fima_index]
+        )
 
     swap_previous = (
-        swaps[swap_index - 1][1]
-        if swap_index >= 1
-        else None
-    )
+            swaps[swap_index - 1][1]
+            if swap_index >= 1
+            else None
+        )
 
     fima_previous = (
-        fima[fima_index - 1][1]
-        if fima_index >= 1
-        else None
-    )
+            fima[fima_index - 1][1]
+            if fima_index >= 1
+            else None
+        )
 
     swap_window = [
         value

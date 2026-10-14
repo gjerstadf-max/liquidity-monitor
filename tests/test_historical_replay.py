@@ -124,7 +124,134 @@ def test_system_liquidity_respects_publication_lag():
     )
 
 
-def test_full_assessment_replays_historical_state():
+def test_full_assessment_replays_historical_state(
+    monkeypatch,
+):
+    from datetime import date, timedelta
+    from decimal import Decimal
+
+    import backend.metrics.bank_funding as bank_funding
+    import backend.metrics.global_dollar_funding as global_dollar
+
+    # ---------------------------------------------------------
+    # BANK FUNDING — deterministic historical H.8 vintage
+    # ---------------------------------------------------------
+
+    deposit_start = date(
+        2026,
+        6,
+        3,
+    )
+
+    def fake_bank_vintage_series(
+        symbol,
+        vintage_date,
+    ):
+        if symbol == "bank_deposits_small":
+            base = Decimal("5600")
+            increment = Decimal("1")
+
+        elif symbol == "bank_deposits_large":
+            base = Decimal("12300")
+            increment = Decimal("2")
+
+        elif symbol == "bank_large_time_deposits_small":
+            base = Decimal("730")
+            increment = Decimal("0.5")
+
+        else:
+            raise AssertionError(
+                f"Unexpected bank vintage series: {symbol}"
+            )
+
+        return [
+            (
+                deposit_start
+                + timedelta(
+                    days=7 * index
+                ),
+                base
+                + increment
+                * Decimal(index),
+            )
+            for index in range(15)
+        ]
+
+    monkeypatch.setattr(
+        bank_funding,
+        "_load_vintage_series",
+        fake_bank_vintage_series,
+    )
+
+    # ---------------------------------------------------------
+    # GLOBAL DOLLAR FUNDING — deterministic H.4.1 vintage
+    # ---------------------------------------------------------
+
+    swap_observations = [
+        (
+            date(2026, 8, 19),
+            Decimal("0.120"),
+        ),
+        (
+            date(2026, 8, 26),
+            Decimal("0.110"),
+        ),
+        (
+            date(2026, 9, 2),
+            Decimal("0.105"),
+        ),
+        (
+            date(2026, 9, 9),
+            Decimal("0.101"),
+        ),
+    ]
+
+    fima_observations = [
+        (
+            date(2026, 8, 19),
+            Decimal("0.001"),
+        ),
+        (
+            date(2026, 8, 26),
+            Decimal("0.001"),
+        ),
+        (
+            date(2026, 9, 2),
+            Decimal("0.000"),
+        ),
+        (
+            date(2026, 9, 9),
+            Decimal("0.001"),
+        ),
+    ]
+
+    def fake_global_vintage_series(
+        symbol,
+        vintage_date,
+    ):
+        if (
+            symbol
+            == "central_bank_liquidity_swaps"
+        ):
+            return swap_observations
+
+        if symbol == "fima_repo":
+            return fima_observations
+
+        raise AssertionError(
+            f"Unexpected global-dollar series: {symbol}"
+        )
+
+    monkeypatch.setattr(
+        global_dollar,
+        "_load_vintage_series",
+        fake_global_vintage_series,
+    )
+
+    # ---------------------------------------------------------
+    # FULL ASSESSMENT
+    # ---------------------------------------------------------
+
     assessment = build_liquidity_assessment(
         as_of_date=REPLAY_DATE
     )
@@ -161,6 +288,8 @@ def test_full_assessment_replays_historical_state():
             "treasury_market_activity"
         ].summary
     )
+
+
 def test_historical_replay_detects_treasury_iorb_anomaly():
     diagnostics = build_anomaly_diagnostics(
         as_of_date=date(2026, 9, 15)
@@ -780,4 +909,76 @@ def test_bank_funding_h8_uses_prior_day_vintage(
         for _, vintage_date
         in requested_vintages
     )
-    
+
+def test_global_dollar_funding_uses_prior_day_vintage(
+    monkeypatch,
+):
+    from datetime import date
+    from decimal import Decimal
+
+    import backend.metrics.global_dollar_funding as global_dollar
+
+    requested_vintages = []
+
+    observations = [
+        (
+            date(2026, 9, 9),
+            Decimal("0.101"),
+        ),
+        (
+            date(2026, 9, 16),
+            Decimal("0.094"),
+        ),
+    ]
+
+    def fake_load_vintage_series(
+        symbol,
+        vintage_date,
+    ):
+        requested_vintages.append(
+            (
+                symbol,
+                vintage_date,
+            )
+        )
+        return observations
+
+    monkeypatch.setattr(
+        global_dollar,
+        "_load_vintage_series",
+        fake_load_vintage_series,
+    )
+
+    stats = (
+        global_dollar
+        .global_dollar_funding_statistics(
+            as_of_date=date(2026, 9, 18)
+        )
+    )
+
+    assert len(requested_vintages) == 2
+
+    assert {
+        symbol
+        for symbol, _
+        in requested_vintages
+    } == {
+        "central_bank_liquidity_swaps",
+        "fima_repo",
+    }
+
+    assert all(
+        vintage_date == date(2026, 9, 17)
+        for _, vintage_date
+        in requested_vintages
+    )
+
+    assert (
+        stats.swap_date
+        == date(2026, 9, 16)
+    )
+
+    assert (
+        stats.fima_date
+        == date(2026, 9, 16)
+    )
