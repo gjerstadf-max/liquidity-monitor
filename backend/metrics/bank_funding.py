@@ -1,14 +1,32 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+
+from datetime import (
+    date,
+    datetime,
+    time,
+    timedelta,
+)
+
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 
-from backend.database.connection import get_session
-from backend.database.models import Indicator, Observation
+from backend.database.connection import (
+    get_session,
+)
 
+from backend.database.models import (
+    Indicator,
+    Observation,
+    ObservationVintage,
+)
+
+from backend.services.freshness import (
+    expected_system_liquidity_observation_date,
+)
 
 # =============================================================
 # DATA OBJECT
@@ -68,6 +86,48 @@ def _load_series(
 
         raise RuntimeError(
             f"No observations found for {symbol}."
+        )
+
+    return [
+        (
+            row[0],
+            row[1],
+        )
+        for row in rows
+    ]
+
+def _load_vintage_series(
+    symbol: str,
+    vintage_date: date,
+) -> list[tuple[date, Decimal]]:
+    """
+    Load one exact point-in-time vintage of a series.
+
+    The vintage must already have been captured in the
+    observation_vintages table.
+    """
+
+    with get_session() as session:
+        rows = session.execute(
+            select(
+                ObservationVintage.observation_date,
+                ObservationVintage.value,
+            )
+            .join(Indicator)
+            .where(
+                Indicator.symbol == symbol,
+                ObservationVintage.vintage_date
+                == vintage_date,
+            )
+            .order_by(
+                ObservationVintage.observation_date
+            )
+        ).all()
+
+    if not rows:
+        raise RuntimeError(
+            "No vintage observations found for "
+            f"{symbol} on {vintage_date}."
         )
 
     return [
@@ -168,23 +228,24 @@ def bank_funding_statistics(
     as_of_date: date | None = None,
 ) -> BankFundingStatistics:
 
+    is_historical_replay = (
+        as_of_date is not None
+    )
+
     primary = _load_series(
         "fed_primary_credit"
     )
 
-    small = _load_series(
-        "bank_deposits_small"
-    )
-
-    large = _load_series(
-        "bank_deposits_large"
-    )
-
-    time_deposits = _load_series(
-        "bank_large_time_deposits_small"
-    )
-
-    if as_of_date is None:
+    if not is_historical_replay:
+        small = _load_series(
+            "bank_deposits_small"
+        )
+        large = _load_series(
+            "bank_deposits_large"
+        )
+        time_deposits = _load_series(
+            "bank_large_time_deposits_small"
+        )
 
         as_of_date = max(
             primary[-1][0],
@@ -192,9 +253,48 @@ def bank_funding_statistics(
             large[-1][0],
         )
 
+        primary_available_date = (
+            as_of_date
+        )
+
+    else:
+        h8_vintage_date = (
+            as_of_date
+            - timedelta(days=1)
+        )
+
+        small = _load_vintage_series(
+            "bank_deposits_small",
+            h8_vintage_date,
+        )
+        large = _load_vintage_series(
+            "bank_deposits_large",
+            h8_vintage_date,
+        )
+        time_deposits = (
+            _load_vintage_series(
+                "bank_large_time_deposits_small",
+                h8_vintage_date,
+            )
+        )
+
+        replay_morning = datetime.combine(
+            as_of_date,
+            time(hour=9),
+            tzinfo=ZoneInfo(
+                "America/New_York"
+            ),
+        )
+
+        primary_available_date = (
+            expected_system_liquidity_observation_date(
+                now=replay_morning
+            )
+        )
+
     primary_obs = _value_at_or_before(
         primary,
-        as_of_date,
+        primary_available_date,
     )
 
     small_obs = _value_at_or_before(

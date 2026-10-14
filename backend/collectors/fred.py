@@ -26,8 +26,8 @@ class FredObservation:
 def fetch_fred_series(
     series_id: str,
     count: int = 20,
+    vintage_date: date | None = None,
 ) -> list[FredObservation]:
-
     api_key = os.getenv("FRED_API_KEY")
 
     if not api_key:
@@ -35,17 +35,29 @@ def fetch_fred_series(
             "FRED_API_KEY environment variable is not set."
         )
 
+    params = {
+        "series_id": series_id,
+        "api_key": api_key,
+        "file_type": "json",
+        "limit": count,
+        "sort_order": "desc",
+    }
+
+    if vintage_date is not None:
+        params["realtime_start"] = (
+            vintage_date.isoformat()
+        )
+        params["realtime_end"] = (
+            vintage_date.isoformat()
+        )
+
     response = httpx.get(
         FRED_API_URL,
-        params={
-            "series_id": series_id,
-            "api_key": api_key,
-            "file_type": "json",
-            "limit": count,
-            "sort_order": "desc",
-        },
+        params=params,
         timeout=20.0,
     )
+
+    response.raise_for_status()
 
     response.raise_for_status()
 

@@ -27,6 +27,7 @@ from backend.collectors.nyfed import (
 from backend.services.observation_store import (
     StoreResult,
     store_values,
+    store_vintage_values,
 )
 from backend.collectors.nyfed_rrp import (
     fetch_latest_reverse_repo,
@@ -230,6 +231,55 @@ def refresh_fred_series(
             values,
     )
 
+def refresh_fred_vintage_series(
+    definition: SeriesDefinition,
+    vintage_date: date,
+    observation_count: int = 100,
+) -> StoreResult:
+    """
+    Capture one historical FRED/ALFRED vintage.
+
+    Values are normalized using the same catalog-defined
+    transform as the ordinary production refresh.
+    """
+
+    if definition.provider != "fred":
+        raise ValueError(
+            "Series is not configured "
+            "for the FRED provider: "
+            f"{definition.symbol}"
+        )
+
+    observations = fetch_fred_series(
+        series_id=definition.external_id,
+        count=observation_count,
+        vintage_date=vintage_date,
+    )
+
+    if not observations:
+        raise RuntimeError(
+            "FRED returned no observations "
+            f"for {definition.symbol} "
+            f"({definition.external_id}) "
+            f"for vintage {vintage_date}."
+        )
+
+    values = [
+        (
+            observation.observation_date,
+            normalize_value(
+                observation.value,
+                definition.transform,
+            ),
+        )
+        for observation in observations
+    ]
+
+    return store_vintage_values(
+        indicator_symbol=definition.symbol,
+        vintage_date=vintage_date,
+        values=values,
+    )
 
 # =============================================================
 # FRED — PROVIDER REFRESH

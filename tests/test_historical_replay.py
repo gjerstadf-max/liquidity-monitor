@@ -659,3 +659,125 @@ def test_model_cannot_evaluate_unseen_hypothesis(
             visible_hypotheses=[],
             path=ledger_path,
         )
+
+def test_bank_funding_primary_credit_respects_h41_publication_lag(
+    monkeypatch,
+):
+    from datetime import date, timedelta
+    from decimal import Decimal
+
+    import backend.metrics.bank_funding as bank_funding
+
+    primary = [
+        (date(2026, 9, 9), Decimal("1.0")),
+        (date(2026, 9, 16), Decimal("2.0")),
+        (date(2026, 9, 23), Decimal("3.0")),
+    ]
+
+    deposit_start = date(2026, 6, 3)
+
+    deposits = [
+        (
+            deposit_start + timedelta(days=7 * index),
+            Decimal("5000") + Decimal(index),
+        )
+        for index in range(15)
+    ]
+
+    monkeypatch.setattr(
+        bank_funding,
+        "_load_series",
+        lambda symbol: primary,
+    )
+
+    monkeypatch.setattr(
+        bank_funding,
+        "_load_vintage_series",
+        lambda symbol, vintage_date: deposits,
+    )
+
+    before_release = (
+        bank_funding.bank_funding_statistics(
+            as_of_date=date(2026, 9, 24)
+        )
+    )
+
+    after_release = (
+        bank_funding.bank_funding_statistics(
+            as_of_date=date(2026, 9, 25)
+        )
+    )
+
+    assert (
+        before_release.primary_credit_date
+        == date(2026, 9, 16)
+    )
+
+    assert (
+        after_release.primary_credit_date
+        == date(2026, 9, 23)
+    )
+
+
+def test_bank_funding_h8_uses_prior_day_vintage(
+    monkeypatch,
+):
+    from datetime import date, timedelta
+    from decimal import Decimal
+
+    import backend.metrics.bank_funding as bank_funding
+
+    primary = [
+        (date(2026, 9, 9), Decimal("1.0")),
+        (date(2026, 9, 16), Decimal("2.0")),
+        (date(2026, 9, 23), Decimal("3.0")),
+    ]
+
+    deposit_start = date(2026, 6, 3)
+
+    deposits = [
+        (
+            deposit_start + timedelta(days=7 * index),
+            Decimal("5000") + Decimal(index),
+        )
+        for index in range(15)
+    ]
+
+    requested_vintages = []
+
+    def fake_load_vintage_series(
+        symbol,
+        vintage_date,
+    ):
+        requested_vintages.append(
+            (
+                symbol,
+                vintage_date,
+            )
+        )
+        return deposits
+
+    monkeypatch.setattr(
+        bank_funding,
+        "_load_series",
+        lambda symbol: primary,
+    )
+
+    monkeypatch.setattr(
+        bank_funding,
+        "_load_vintage_series",
+        fake_load_vintage_series,
+    )
+
+    bank_funding.bank_funding_statistics(
+        as_of_date=date(2026, 9, 25)
+    )
+
+    assert len(requested_vintages) == 3
+
+    assert all(
+        vintage_date == date(2026, 9, 24)
+        for _, vintage_date
+        in requested_vintages
+    )
+    

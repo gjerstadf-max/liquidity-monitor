@@ -12,6 +12,7 @@ from backend.database.connection import (
 from backend.database.models import (
     Indicator,
     Observation,
+    ObservationVintage
 )
 
 
@@ -112,6 +113,120 @@ def store_values(
             latest_value=
                 None,
         )
+
+def store_vintage_values(
+    indicator_symbol: str,
+    vintage_date: date,
+    values: list[
+        tuple[
+            date,
+            Decimal,
+        ]
+    ],
+) -> StoreResult:
+    """
+    Store one point-in-time vintage of an indicator series.
+
+    Existing observation-date/vintage-date combinations
+    are skipped so historical vintages remain immutable.
+    """
+
+    symbol = (
+        indicator_symbol
+        .strip()
+        .lower()
+    )
+
+    if not symbol:
+        raise ValueError(
+            "indicator_symbol cannot be empty."
+        )
+
+    ordered_values = sorted(
+        values,
+        key=lambda item: item[0],
+    )
+
+    if not ordered_values:
+        return StoreResult(
+            symbol=symbol,
+            received=0,
+            inserted=0,
+            skipped=0,
+            latest_date=None,
+            latest_value=None,
+        )
+
+    with get_session() as session:
+        indicator = session.scalar(
+            select(
+                Indicator
+            ).where(
+                Indicator.symbol
+                == symbol
+            )
+        )
+
+        if indicator is None:
+            raise RuntimeError(
+                "Indicator not found "
+                "in database: "
+                f"{symbol}"
+            )
+
+        existing_dates = set(
+            session.scalars(
+                select(
+                    ObservationVintage.observation_date
+                ).where(
+                    ObservationVintage.indicator_id
+                    == indicator.id,
+                    ObservationVintage.vintage_date
+                    == vintage_date,
+                )
+            ).all()
+        )
+
+        inserted = 0
+        skipped = 0
+
+        for (
+            observation_date,
+            value,
+        ) in ordered_values:
+            if observation_date in existing_dates:
+                skipped += 1
+                continue
+
+            session.add(
+                ObservationVintage(
+                    indicator_id=indicator.id,
+                    observation_date=observation_date,
+                    vintage_date=vintage_date,
+                    value=value,
+                )
+            )
+
+            existing_dates.add(
+                observation_date
+            )
+
+            inserted += 1
+
+        session.commit()
+
+    latest_date, latest_value = (
+        ordered_values[-1]
+    )
+
+    return StoreResult(
+        symbol=symbol,
+        received=len(ordered_values),
+        inserted=inserted,
+        skipped=skipped,
+        latest_date=latest_date,
+        latest_value=latest_value,
+    )
 
 
     # ---------------------------------------------------------

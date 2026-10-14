@@ -194,6 +194,73 @@ class Observation(Base):
         back_populates="observations"
     )
 
+class ObservationVintage(Base):
+    """
+    Point-in-time value for an indicator observation.
+
+    `observation_date` is the date the economic value
+    refers to.
+
+    `vintage_date` is the date on which that value was
+    publicly available from the source.
+
+    Multiple vintages may therefore exist for the same
+    indicator and observation date.
+    """
+
+    __tablename__ = "observation_vintages"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "indicator_id",
+            "observation_date",
+            "vintage_date",
+            name=(
+                "uq_observation_vintage_"
+                "indicator_date_vintage"
+            ),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(
+        primary_key=True
+    )
+
+    indicator_id: Mapped[int] = mapped_column(
+        ForeignKey("indicators.id"),
+        nullable=False,
+        index=True,
+    )
+
+    observation_date: Mapped[date] = mapped_column(
+        Date,
+        nullable=False,
+        index=True,
+    )
+
+    vintage_date: Mapped[date] = mapped_column(
+        Date,
+        nullable=False,
+        index=True,
+    )
+
+    value: Mapped[Decimal] = mapped_column(
+        Numeric(20, 8),
+        nullable=False,
+    )
+
+    retrieved_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+    )
+
 
 # =============================================================
 # NEWS SNAPSHOTS
