@@ -872,7 +872,7 @@ def test_bank_funding_h8_uses_prior_day_vintage(
         for index in range(15)
     ]
     requested_vintages = []
-    
+
     def fake_load_vintage_series(
         symbol,
         vintage_date,
@@ -1087,3 +1087,73 @@ def test_treasury_market_snapshot_historical_sequence(
         stats.spread_bp,
         1,
     ) == 46.0
+def test_commercial_paper_uses_prior_day_vintage(
+    monkeypatch,
+):
+    from datetime import date
+    from decimal import Decimal
+
+    import backend.metrics.commercial_paper as cp
+
+    requested_vintages = []
+
+    def fake_vintage_series(
+        symbol,
+        vintage_date,
+    ):
+        requested_vintages.append(
+            (
+                symbol,
+                vintage_date,
+            )
+        )
+
+        if symbol == "cp_aa_nonfinancial_30d":
+            return {
+                date(2026, 9, 11):
+                    Decimal("3.77"),
+            }
+
+        if symbol == "cp_a2p2_nonfinancial_30d":
+            return {
+                date(2026, 9, 11):
+                    Decimal("4.00"),
+            }
+
+        raise AssertionError(
+            f"Unexpected series: {symbol}"
+        )
+
+    monkeypatch.setattr(
+        cp,
+        "_load_vintage_series",
+        fake_vintage_series,
+    )
+
+    snapshot = (
+        cp.latest_commercial_paper_snapshot(
+            as_of_date=date(2026, 9, 15)
+        )
+    )
+
+    assert requested_vintages == [
+        (
+            "cp_aa_nonfinancial_30d",
+            date(2026, 9, 14),
+        ),
+        (
+            "cp_a2p2_nonfinancial_30d",
+            date(2026, 9, 14),
+        ),
+    ]
+
+    assert (
+        snapshot.observation_date
+        == date(2026, 9, 11)
+    )
+
+    assert (
+        snapshot.credit_premium_bp
+        == Decimal("23.00")
+    )
+    

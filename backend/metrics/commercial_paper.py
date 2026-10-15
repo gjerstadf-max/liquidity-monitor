@@ -1,18 +1,22 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
+
 from decimal import Decimal
 from statistics import mean, pstdev
 
 from sqlalchemy import select
 
 from backend.database.connection import get_session
-from backend.database.models import Indicator, Observation
 
+from backend.database.models import (
+    Indicator,
+    Observation,
+    ObservationVintage,
+)
 
 BP = Decimal("100")
-
 
 # =============================================================
 # DATA OBJECTS
@@ -83,6 +87,58 @@ def _load_series(
         for row in rows
     }
 
+def _load_vintage_series(
+    symbol: str,
+    vintage_date: date,
+) -> dict[date, Decimal]:
+    """
+    Load the exact FRED/ALFRED vintage known on
+    vintage_date for historical replay.
+    """
+
+    with get_session() as session:
+        indicator = session.scalar(
+            select(
+                Indicator
+            ).where(
+                Indicator.symbol == symbol
+            )
+        )
+
+        if indicator is None:
+            raise RuntimeError(
+                f"Indicator not found: {symbol}"
+            )
+
+        rows = session.execute(
+            select(
+                ObservationVintage.observation_date,
+                ObservationVintage.value,
+            )
+            .where(
+                ObservationVintage.indicator_id
+                == indicator.id,
+                ObservationVintage.vintage_date
+                == vintage_date,
+                ObservationVintage.observation_date
+                <= vintage_date,
+            )
+            .order_by(
+                ObservationVintage.observation_date.desc()
+            )
+        ).all()
+
+    if not rows:
+        raise RuntimeError(
+            "No vintage observations found for "
+            f"{symbol} on {vintage_date}."
+        )
+
+    return {
+        observation_date: value
+        for observation_date, value in rows
+        if value is not None
+    }
 
 # =============================================================
 # HISTORY
@@ -93,13 +149,30 @@ def _load_credit_spread_history(
     as_of_date: date | None = None,
 ) -> list[CommercialPaperSnapshot]:
 
-    aa = _load_series(
-        "cp_aa_nonfinancial_30d"
-    )
+    if as_of_date is None:
+        aa = _load_series(
+            "cp_aa_nonfinancial_30d"
+        )
 
-    a2p2 = _load_series(
-        "cp_a2p2_nonfinancial_30d"
-    )
+        a2p2 = _load_series(
+            "cp_a2p2_nonfinancial_30d"
+        )
+
+    else:
+        vintage_date = (
+            as_of_date
+            - timedelta(days=1)
+        )
+
+        aa = _load_vintage_series(
+            "cp_aa_nonfinancial_30d",
+            vintage_date,
+        )
+
+        a2p2 = _load_vintage_series(
+            "cp_a2p2_nonfinancial_30d",
+            vintage_date,
+        )
 
     common_dates = (
         set(aa)
