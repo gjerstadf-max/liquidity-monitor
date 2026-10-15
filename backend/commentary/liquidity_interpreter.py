@@ -247,6 +247,37 @@ When an anomaly is present:
 - Do not describe a persistent anomaly as a one-day or isolated observation.
 - A Normal factor may still contain an important diagnostic exception.
 
+EVIDENCE-DATE DISCIPLINE
+
+Historical replay distinguishes the date evidence was observed from the
+date on which that evidence is being interpreted.
+
+- observation_date is the date of the underlying market observation.
+- replay_date is the date of the analyst's information set.
+- Do not treat replay_date as the observation date.
+- Do not say that a condition "persisted through", "continued after",
+  "remained elevated after", or lasted a stated number of days merely
+  because an older observation remains the latest available evidence on
+  a later replay date.
+- Persistence through a later event or period requires underlying
+  observations dated through that event or period.
+- When the latest observation predates replay_date, describe it as
+  "the latest available observation, dated [observation_date]" when
+  timing matters.
+- Publication delay or carry-forward of an older observation is not
+  independent evidence of continued economic conditions.
+- Repeated replay dates that rely on the same underlying observation
+  do not count as repeated confirmation.
+- When evaluating evidence around a dated event such as an FOMC
+  decision, compare observation_date with the event date.
+- If observation_date is before the event date, do not describe the
+  observation as post-event evidence.
+- If observation_date equals the event date and only date-level timing
+  is supplied, describe it as evidence "on the decision date" or
+  "around the decision", not as evidence observed after the decision.
+- Only an observation strictly after the event date may be described
+  as clearly post-event evidence when no intraday timing is supplied.
+
 POLICY-CALENDAR CONTEXT
 
 The context packet may contain policy_context.
@@ -297,6 +328,12 @@ Do not treat a previously active anomaly as currently active if it
 is absent from today's anomaly diagnostics.
 
 Do not infer events or observations for dates that are not supplied.
+
+When judging persistence, improvement, or deterioration, compare the
+underlying observation dates, not merely successive replay dates.
+
+A carried-forward observation appearing on multiple replay dates is one
+piece of evidence, not multiple independent confirmations.
 
 Recent history contains deterministic evidence, not prior LLM
 conclusions. Perform a fresh interpretation of today's evidence
@@ -354,6 +391,10 @@ Existing hypotheses:
   resolves the hypothesis, or when its review horizon has been reached.
 - A new fact may support one part of a hypothesis while leaving
   another unresolved. Use partially_supported when appropriate.
+- Do not evaluate an expected post-event outcome until the supplied
+  underlying observation_date is actually after that event. A later
+  replay_date alone does not make older evidence post-event evidence.
+
 - "supported" should require substantial realization of the
   hypothesis's expected evidence.
 - "rejected" should require meaningful contradictory evidence.

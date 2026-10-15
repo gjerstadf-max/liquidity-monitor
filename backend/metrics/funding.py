@@ -102,7 +102,7 @@ def _load_common_rate_history(
         common_dates = [
             observation_date
             for observation_date in common_dates
-            if observation_date <= as_of_date
+            if observation_date < as_of_date
         ]
 
     if not common_dates:

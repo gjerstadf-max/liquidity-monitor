@@ -52,7 +52,7 @@ def test_funding_respects_historical_date():
     assert stats.observation_date == date(
         2026,
         9,
-        15,
+        14,
     )
 
 
@@ -1156,4 +1156,3 @@ def test_commercial_paper_uses_prior_day_vintage(
         snapshot.credit_premium_bp
         == Decimal("23.00")
     )
-    

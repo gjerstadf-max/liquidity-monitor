@@ -193,7 +193,7 @@ def _load_repo_history(
             observation_date
             for observation_date
             in common_dates
-            if observation_date <= as_of_date
+            if observation_date < as_of_date
         }
 
 
@@ -478,7 +478,7 @@ def fed_repo_operations_statistics(
             in series.items()
             if (
                 as_of_date is None
-                or observation_date <= as_of_date
+                or observation_date < as_of_date
             )
         ),
         key=lambda item: item[0],
