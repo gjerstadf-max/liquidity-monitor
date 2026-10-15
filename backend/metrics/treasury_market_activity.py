@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
+
 from datetime import date, datetime, timedelta
+
 from statistics import mean, pstdev
 from zoneinfo import ZoneInfo
 
@@ -12,6 +14,7 @@ from backend.database.connection import get_session
 from backend.database.models import (
     Indicator,
     Observation,
+    ObservationVintage,
     TreasuryAuctionRecord,
 )
 
@@ -346,18 +349,19 @@ def _load_indicator_history(
     ]
 ]:
     """
-    Load observation history for a scalar indicator.
+    Load scalar-indicator history.
+
+    Historical replay uses the FRED/ALFRED vintage
+    available before the replay morning so later
+    publication and revisions cannot leak backward.
     """
 
     with get_session() as session:
-
         indicator = session.scalar(
             select(
                 Indicator
-            )
-            .where(
-                Indicator.symbol
-                == symbol
+            ).where(
+                Indicator.symbol == symbol
             )
         )
 
@@ -366,33 +370,59 @@ def _load_indicator_history(
                 f"Indicator not found: {symbol}"
             )
 
-        statement = (
-            select(
-                Observation.observation_date,
-                Observation.value,
-            )
-            .where(
-                Observation.indicator_id
-                == indicator.id
-            )
-        )
-
         if as_of_date is not None:
+            vintage_date = (
+                as_of_date
+                - timedelta(days=1)
+            )
 
             statement = (
-                statement.where(
-                    Observation.observation_date
-                    <= as_of_date
+                select(
+                    ObservationVintage.observation_date,
+                    ObservationVintage.value,
+                )
+                .where(
+                    ObservationVintage.indicator_id
+                    == indicator.id,
+                    ObservationVintage.vintage_date
+                    == vintage_date,
+                    ObservationVintage.observation_date
+                    <= as_of_date,
+                )
+                .order_by(
+                    ObservationVintage.observation_date
                 )
             )
 
-        statement = statement.order_by(
-            Observation.observation_date
-        )
+        else:
+            statement = (
+                select(
+                    Observation.observation_date,
+                    Observation.value,
+                )
+                .where(
+                    Observation.indicator_id
+                    == indicator.id
+                )
+                .order_by(
+                    Observation.observation_date
+                )
+            )
 
         rows = session.execute(
             statement
         ).all()
+
+    if not rows:
+        if as_of_date is not None:
+            raise RuntimeError(
+                "No point-in-time observations found "
+                f"for {symbol} as of {as_of_date}."
+            )
+
+        raise RuntimeError(
+            f"No observations found for {symbol}."
+        )
 
     return [
         (
@@ -1309,10 +1339,20 @@ def treasury_auction_absorption_statistics(
             "minimum_history cannot exceed lookback"
         )
 
+    is_historical_replay = (
+       as_of_date is not None
+    )
+
     if as_of_date is None:
         as_of_date = (
             _market_today()
         )
+
+    auction_cutoff_date = (
+        as_of_date - timedelta(days=1)
+        if is_historical_replay
+        else as_of_date
+    )
 
     with get_session() as session:
 
@@ -1342,7 +1382,7 @@ def treasury_auction_absorption_statistics(
             )
             .where(
                 TreasuryAuctionRecord.auction_date
-                <= as_of_date
+                <= auction_cutoff_date
             )
             .order_by(
                 TreasuryAuctionRecord.auction_date

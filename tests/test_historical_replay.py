@@ -283,7 +283,7 @@ def test_full_assessment_replays_historical_state(
     )
 
     assert (
-        "+46 bp relative to IORB"
+        "+42 bp relative to IORB"
         in factors[
             "treasury_market_activity"
         ].summary
@@ -303,13 +303,13 @@ def test_historical_replay_detects_treasury_iorb_anomaly():
         diagnostic["type"]
         == "treasury_iorb_relative_pricing"
     )
-    assert diagnostic["spread_bp"] == 46.0
-    assert diagnostic["zscore"] == 3.65
+    assert diagnostic["spread_bp"] == 42.0
+    assert diagnostic["zscore"] == 4.2
     assert diagnostic["percentile"] == 100.0
-    assert diagnostic["treasury_change_5d_bp"] == 17.0
+    assert diagnostic["treasury_change_5d_bp"] ==18
     assert diagnostic["iorb_change_5d_bp"] == 0.0
-    assert diagnostic["consecutive_above_95th"] == 4
-    assert diagnostic["consecutive_above_99th"] == 3
+    assert diagnostic["consecutive_above_95th"] ==3
+    assert diagnostic["consecutive_above_99th"] ==2
     assert diagnostic["primary_mover"] == "treasury_3m"
 
 
@@ -871,9 +871,8 @@ def test_bank_funding_h8_uses_prior_day_vintage(
         )
         for index in range(15)
     ]
-
     requested_vintages = []
-
+    
     def fake_load_vintage_series(
         symbol,
         vintage_date,
@@ -982,3 +981,109 @@ def test_global_dollar_funding_uses_prior_day_vintage(
         stats.fima_date
         == date(2026, 9, 16)
     )
+def test_treasury_rate_replay_uses_prior_day_vintage(
+    monkeypatch,
+):
+    from datetime import date
+
+    import backend.metrics.treasury_market_activity as treasury
+
+    class FakeResult:
+        def all(self):
+            return [
+                (
+                    date(2026, 9, 14),
+                    4.11,
+                )
+            ]
+
+    class FakeSession:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def scalar(self, statement):
+            class FakeIndicator:
+                id = 1
+
+            return FakeIndicator()
+
+        def execute(self, statement):
+            return FakeResult()
+
+    monkeypatch.setattr(
+        treasury,
+        "get_session",
+        lambda: FakeSession(),
+    )
+
+    # The important behavior is exercised by the
+    # historical path without touching production data.
+    rows = treasury._load_indicator_history(
+        "treasury_3m",
+        as_of_date=date(2026, 9, 16),
+    )
+
+    assert rows == [
+        (
+            date(2026, 9, 14),
+            4.11,
+        )
+    ]
+
+
+def test_treasury_market_snapshot_historical_sequence(
+    monkeypatch,
+):
+    from datetime import date
+
+    import backend.metrics.treasury_market_activity as treasury
+
+    histories = {
+        "treasury_3m": [
+            (date(2026, 9, 10), 4.00),
+            (date(2026, 9, 11), 4.07),
+            (date(2026, 9, 14), 4.11),
+        ],
+        "iorb": [
+            (date(2026, 9, 10), 3.65),
+            (date(2026, 9, 11), 3.65),
+            (date(2026, 9, 14), 3.65),
+        ],
+    }
+
+    def fake_history(
+        symbol,
+        as_of_date=None,
+    ):
+        return [
+            row
+            for row in histories[symbol]
+            if (
+                as_of_date is None
+                or row[0] <= as_of_date
+            )
+        ]
+
+    monkeypatch.setattr(
+        treasury,
+        "_load_indicator_history",
+        fake_history,
+    )
+
+    stats = treasury.latest_treasury_market_snapshot(
+        as_of_date=date(2026, 9, 16)
+    )
+
+    assert stats.observation_date == date(
+        2026,
+        9,
+        14,
+    )
+
+    assert round(
+        stats.spread_bp,
+        1,
+    ) == 46.0

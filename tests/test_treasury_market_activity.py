@@ -1,4 +1,5 @@
 from datetime import date
+from unittest import result
 
 from backend.metrics.treasury_market_activity import (
     latest_treasury_market_snapshot,
@@ -42,27 +43,27 @@ def test_treasury_absorption_reference_date():
         )
     )
 
-    assert result.auctions_used == 25
+    assert result.auctions_used == 24
 
     assert round(
         result.offering_amount_billions,
         1,
-    ) == 2244.0
+    ) == 2172.0
 
     assert round(
         result.current_pressure,
         2,
-    ) == -0.04
+    ) == -0.03
 
     assert round(
         result.historical_percentile,
         1,
-    ) == 49.6
+    ) == 50.4
 
     assert round(
         result.historical_zscore,
         2,
-    ) == -0.02
+    ) == -0.01
 
 
 def test_treasury_iorb_reference_date():
@@ -73,16 +74,16 @@ def test_treasury_iorb_reference_date():
 
     assert (
         result.observation_date
-        == REFERENCE_DATE
+        == date(2026, 8, 24)
     )
 
-    assert result.treasury_3m_percent == 3.85
+    assert result.treasury_3m_percent == 3.87
     assert result.iorb_percent == 3.65
 
     assert round(
         result.spread_bp,
         1,
-    ) == 20.0
+    ) == 22.0
 
 
 def test_treasury_market_activity_signal():
@@ -119,9 +120,9 @@ def test_treasury_market_activity_diagnostics():
     assert round(
         diagnostics.absorption_z,
         2,
-    ) == -0.02
+    ) == -0.01
 
     assert round(
         diagnostics.treasury_iorb_spread_bp,
         1,
-    ) == 20.0
+    ) == 22.0
