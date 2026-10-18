@@ -174,6 +174,38 @@ def build_treasury_market_activity_diagnostics(
 # =============================================================
 
 
+def _ordinal_percentile(
+    value: float,
+) -> str:
+    """
+    Format a rounded percentile with the correct
+    English ordinal suffix.
+    """
+    rounded = int(
+        round(value)
+    )
+
+    if (
+        10
+        <= rounded % 100
+        <= 20
+    ):
+        suffix = "th"
+    else:
+        suffix = {
+            1: "st",
+            2: "nd",
+            3: "rd",
+        }.get(
+            rounded % 10,
+            "th",
+        )
+
+    return (
+        f"{rounded}{suffix}"
+    )
+
+
 def evaluate_treasury_market_activity_signal(
     as_of_date: date | None = None,
 ) -> Signal:
@@ -246,11 +278,11 @@ def evaluate_treasury_market_activity_signal(
             message=(
                 f"Gross Treasury bill supply over the "
                 f"past 28 days is ${gross_supply:,.0f}B, "
-                f"at the {supply_pct:.0f}th percentile "
+                f"at the {_ordinal_percentile(supply_pct)} percentile "
                 f"of its trailing 52-week distribution "
                 f"with a z-score of {supply_z:+.2f}. "
                 f"Auction absorption pressure is at the "
-                f"{absorption_pct:.0f}th percentile of "
+                f"{_ordinal_percentile(absorption_pct)} percentile of "
                 f"its historical distribution with a "
                 f"z-score of {absorption_z:+.2f}. "
                 "Treasury supply and auction demand are "
@@ -279,7 +311,7 @@ def evaluate_treasury_market_activity_signal(
             message=(
                 f"Gross Treasury bill supply over the "
                 f"past 28 days is ${gross_supply:,.0f}B, "
-                f"at the {supply_pct:.0f}th percentile "
+                f"at the {_ordinal_percentile(supply_pct)} percentile "
                 f"of its trailing 52-week distribution "
                 f"with a z-score of {supply_z:+.2f}. "
                 f"Auction absorption pressure is at the "
@@ -308,7 +340,7 @@ def evaluate_treasury_market_activity_signal(
             observation_date=diagnostics.observation_date,
             message=(
                 f"Auction absorption pressure is at the "
-                f"{absorption_pct:.0f}th percentile of "
+                f"{_ordinal_percentile(absorption_pct)} percentile of "
                 f"its historical distribution with a "
                 f"z-score of {absorption_z:+.2f}. "
                 f"Gross bill supply over the past 28 days "
@@ -339,7 +371,7 @@ def evaluate_treasury_market_activity_signal(
             observation_date=diagnostics.observation_date,
             message=(
                 f"Auction absorption pressure is at the "
-                f"{absorption_pct:.0f}th percentile of "
+                f"{_ordinal_percentile(absorption_pct)} percentile of "
                 f"its historical distribution with a "
                 f"z-score of {absorption_z:+.2f}. "
                 f"Gross bill supply over the past 28 days "
@@ -380,7 +412,7 @@ def evaluate_treasury_market_activity_signal(
             message=(
                 f"Gross Treasury bill supply over the "
                 f"past 28 days is ${gross_supply:,.0f}B, "
-                f"at the {supply_pct:.0f}th percentile "
+                f"at the {_ordinal_percentile(supply_pct)} percentile "
                 f"of its trailing 52-week distribution "
                 f"with a z-score of {supply_z:+.2f}. "
                 f"Auction absorption pressure is at the "
