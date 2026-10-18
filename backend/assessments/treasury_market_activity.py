@@ -73,4 +73,6 @@ def assess_treasury_market_activity(
 
         summary=
             signal.message,
+        observation_date=
+            signal.observation_date,
     )

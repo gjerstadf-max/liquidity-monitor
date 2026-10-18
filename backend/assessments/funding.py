@@ -50,4 +50,6 @@ def assess_funding(
 
         summary=
             signal.message,
+        observation_date=
+            signal.observation_date,
     )

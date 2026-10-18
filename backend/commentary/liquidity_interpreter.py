@@ -339,6 +339,27 @@ Recent history contains deterministic evidence, not prior LLM
 conclusions. Perform a fresh interpretation of today's evidence
 while using prior states to understand how conditions have changed.
 
+FACTOR EVIDENCE DATES
+
+Current factor records may contain observation_date, and prior
+replay records may contain factor_observation_dates.
+
+Use these dates to distinguish fresh evidence from carried-forward
+evidence.
+
+If the same underlying observation appears on multiple replay dates:
+
+- it remains relevant to the current assessment
+- it is not a new independent confirmation
+- do not describe it as strengthening merely because another replay
+  day has passed
+- do not describe it as persisting across multiple observations
+- prefer wording such as "the latest available reading remains elevated"
+
+Only a different underlying observation_date constitutes a new
+observation for persistence or confirmation.
+
+
 RELATIVE-VALUE TERMINOLOGY
 
 Avoid describing securities as "rich" or "cheap" unless the direction
@@ -670,9 +691,12 @@ def _persistent_non_normal_factors(
     minimum_prior_observations: int = 2,
 ) -> list[str]:
     """
-    Return current non-Normal factors that were also
-    non-Normal in the required number of immediately
-    preceding replay states.
+    Return current non-Normal factors that remain
+    non-Normal across the required number of distinct
+    underlying observations.
+
+    Repeated replay dates carrying the same underlying
+    observation do not count as independent confirmation.
     """
 
     framework = packet.get(
@@ -690,6 +714,17 @@ def _persistent_non_normal_factors(
     if not current_factors:
         return []
 
+    factors = packet.get(
+        "factors",
+        [],
+    )
+
+    current_by_key = {
+        factor["key"]: factor
+        for factor in factors
+        if factor.get("key")
+    }
+
     recent_history = packet.get(
         "recent_history",
         [],
@@ -698,7 +733,27 @@ def _persistent_non_normal_factors(
     persistent: list[str] = []
 
     for factor in current_factors:
-        consecutive_prior = 0
+        current_factor = current_by_key.get(
+            factor,
+            {},
+        )
+
+        current_observation_date = (
+            current_factor.get(
+                "observation_date"
+            )
+        )
+
+        # Without an underlying observation date we cannot
+        # establish independent persistence conservatively.
+        if not current_observation_date:
+            continue
+
+        seen_observation_dates = {
+            current_observation_date
+        }
+
+        distinct_prior_observations = 0
 
         for prior_day in reversed(
             recent_history
@@ -710,18 +765,48 @@ def _persistent_non_normal_factors(
                 )
             )
 
+            # Once the factor was Normal, the consecutive
+            # non-Normal episode has ended.
             if factor not in prior_non_normal:
                 break
 
-            consecutive_prior += 1
-
-        if (
-            consecutive_prior
-            >= minimum_prior_observations
-        ):
-            persistent.append(
-                factor
+            prior_observation_date = (
+                prior_day.get(
+                    "factor_observation_dates",
+                    {},
+                ).get(
+                    factor
+                )
             )
+
+            # Old replay-memory records may not contain
+            # observation-date metadata. They cannot count
+            # as independent confirmation.
+            if not prior_observation_date:
+                continue
+
+            # Carry-forward of the same underlying observation
+            # is relevant context but not new evidence.
+            if (
+                prior_observation_date
+                in seen_observation_dates
+            ):
+                continue
+
+            seen_observation_dates.add(
+                prior_observation_date
+            )
+
+            distinct_prior_observations += 1
+
+            if (
+                distinct_prior_observations
+                >= minimum_prior_observations
+            ):
+                persistent.append(
+                    factor
+                )
+                break
 
     return sorted(
         persistent

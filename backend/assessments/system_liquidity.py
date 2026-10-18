@@ -50,4 +50,5 @@ def assess_system_liquidity(
 
         summary=
             signal.message,
+        observation_date=signal.observation_date,
     )

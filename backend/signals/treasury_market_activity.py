@@ -242,6 +242,7 @@ def evaluate_treasury_market_activity_signal(
                 "is materially stressed"
             ),
             severity="Critical",
+            observation_date=diagnostics.observation_date,
             message=(
                 f"Gross Treasury bill supply over the "
                 f"past 28 days is ${gross_supply:,.0f}B, "
@@ -274,6 +275,7 @@ def evaluate_treasury_market_activity_signal(
                 "weaker auction absorption"
             ),
             severity="Warning",
+            observation_date=diagnostics.observation_date,
             message=(
                 f"Gross Treasury bill supply over the "
                 f"past 28 days is ${gross_supply:,.0f}B, "
@@ -303,6 +305,7 @@ def evaluate_treasury_market_activity_signal(
                 "is unusually weak"
             ),
             severity="Warning",
+            observation_date=diagnostics.observation_date,
             message=(
                 f"Auction absorption pressure is at the "
                 f"{absorption_pct:.0f}th percentile of "
@@ -333,6 +336,7 @@ def evaluate_treasury_market_activity_signal(
                 "warrants monitoring"
             ),
             severity="Watch",
+            observation_date=diagnostics.observation_date,
             message=(
                 f"Auction absorption pressure is at the "
                 f"{absorption_pct:.0f}th percentile of "
@@ -372,6 +376,7 @@ def evaluate_treasury_market_activity_signal(
                 "heavy but being absorbed normally"
             ),
             severity="Watch",
+            observation_date=diagnostics.observation_date,
             message=(
                 f"Gross Treasury bill supply over the "
                 f"past 28 days is ${gross_supply:,.0f}B, "
@@ -399,6 +404,7 @@ def evaluate_treasury_market_activity_signal(
             "remain orderly"
         ),
         severity="Normal",
+        observation_date=diagnostics.observation_date,
         message=(
             f"Gross Treasury bill supply over the past "
             f"28 days is ${gross_supply:,.0f}B, at the "

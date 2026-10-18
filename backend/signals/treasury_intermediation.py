@@ -762,11 +762,9 @@ def evaluate_treasury_intermediation_signal(
     Evaluate the latest Treasury Intermediation signal
     available on or before as_of_date.
     """
-
     diagnostics = (
         build_treasury_intermediation_diagnostics_history(
-            as_of_date=
-                as_of_date
+            as_of_date=as_of_date
         )
     )
 
@@ -776,13 +774,22 @@ def evaluate_treasury_intermediation_signal(
             "are available."
         )
 
-    return (
+    latest = diagnostics[-1]
+
+    signal = (
         evaluate_treasury_intermediation_diagnostics(
-            diagnostics[
-                -1
-            ]
+            latest
         )
     )
+
+    return Signal(
+        category=signal.category,
+        title=signal.title,
+        severity=signal.severity,
+        message=signal.message,
+        observation_date=latest.observation_date,
+    )
+
 
 
 # =============================================================

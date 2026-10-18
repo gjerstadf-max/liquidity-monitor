@@ -51,19 +51,13 @@ def assess_treasury_intermediation(
     )
 
     return Assessment(
-        category=
-            "Treasury Intermediation",
-
-        verdict=
-            SEVERITY_VERDICT[
-                signal.severity
-            ],
-
-        confidence=
-            SEVERITY_CONFIDENCE[
-                signal.severity
-            ],
-
-        summary=
-            signal.message,
+        category="Treasury Intermediation",
+        verdict=SEVERITY_VERDICT[
+            signal.severity
+        ],
+        confidence=SEVERITY_CONFIDENCE[
+            signal.severity
+        ],
+        summary=signal.message,
+        observation_date=signal.observation_date,
     )

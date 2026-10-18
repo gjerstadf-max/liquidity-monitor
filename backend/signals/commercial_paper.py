@@ -168,6 +168,7 @@ def evaluate_commercial_paper_statistics(
             "does not indicate unusual stress in unsecured "
             "short-term corporate funding."
         ),
+        observation_date=stats.observation_date,
     )
 
 

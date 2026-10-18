@@ -51,4 +51,5 @@ def assess_global_dollar_funding(
 
         summary=
             signal.message,
+        observation_date=signal.observation_date,
     )

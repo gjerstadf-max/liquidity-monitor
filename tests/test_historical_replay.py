@@ -11,6 +11,10 @@ from backend.metrics.system_liquidity import (
     system_liquidity_metrics,
 )
 
+from backend.commentary.liquidity_interpreter import (
+    _persistent_non_normal_factors,
+)
+
 from backend.commentary.anomaly_context import (
     build_anomaly_diagnostics,
 )
@@ -1156,3 +1160,125 @@ def test_commercial_paper_uses_prior_day_vintage(
         snapshot.credit_premium_bp
         == Decimal("23.00")
     )
+def test_carried_forward_factor_is_not_repeated_confirmation():
+    packet = {
+        "framework": {
+            "non_normal_factors": [
+                "treasury_intermediation",
+            ],
+        },
+        "factors": [
+            {
+                "key": "treasury_intermediation",
+                "verdict": "Watch",
+                "observation_date": "2026-09-23",
+            },
+        ],
+        "recent_history": [
+            {
+                "replay_date": "2026-09-28",
+                "non_normal_factors": [
+                    "treasury_intermediation",
+                ],
+                "factor_observation_dates": {
+                    "treasury_intermediation":
+                        "2026-09-23",
+                },
+            },
+            {
+                "replay_date": "2026-09-29",
+                "non_normal_factors": [
+                    "treasury_intermediation",
+                ],
+                "factor_observation_dates": {
+                    "treasury_intermediation":
+                        "2026-09-23",
+                },
+            },
+        ],
+    }
+
+    assert (
+        _persistent_non_normal_factors(packet)
+        == []
+    )
+
+
+def test_distinct_factor_observations_can_establish_persistence():
+    packet = {
+        "framework": {
+            "non_normal_factors": [
+                "treasury_intermediation",
+            ],
+        },
+        "factors": [
+            {
+                "key": "treasury_intermediation",
+                "verdict": "Watch",
+                "observation_date": "2026-09-30",
+            },
+        ],
+        "recent_history": [
+            {
+                "replay_date": "2026-09-16",
+                "non_normal_factors": [
+                    "treasury_intermediation",
+                ],
+                "factor_observation_dates": {
+                    "treasury_intermediation":
+                        "2026-09-16",
+                },
+            },
+            {
+                "replay_date": "2026-09-23",
+                "non_normal_factors": [
+                    "treasury_intermediation",
+                ],
+                "factor_observation_dates": {
+                    "treasury_intermediation":
+                        "2026-09-23",
+                },
+            },
+        ],
+    }
+
+    assert (
+        _persistent_non_normal_factors(packet)
+        == ["treasury_intermediation"]
+    )
+
+def test_treasury_market_activity_replay_has_observation_date():
+    from datetime import date
+
+    from backend.commentary.interpretation_context import (
+        build_interpretation_context,
+    )
+
+    replay_date = date(
+        2026,
+        10,
+        1,
+    )
+
+    packet = build_interpretation_context(
+        replay_date=replay_date
+    )
+
+    factor = next(
+        item
+        for item in packet["factors"]
+        if (
+            item["key"]
+            == "treasury_market_activity"
+        )
+    )
+
+    assert factor["observation_date"] is not None
+
+    observation_date = date.fromisoformat(
+        factor["observation_date"]
+    )
+
+    assert observation_date <= replay_date
+
+

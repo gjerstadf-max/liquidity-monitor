@@ -96,6 +96,13 @@ def _build_day_record(
             and factor.get("verdict")
         )
     }
+    factor_observation_dates = {
+       factor["key"]: factor.get(
+            "observation_date"
+        )
+        for factor in factors
+        if factor.get("key")
+    }
 
     record = {
         "replay_date":
@@ -113,6 +120,9 @@ def _build_day_record(
 
         "factor_verdicts":
             factor_verdicts,
+
+        "factor_observation_dates":
+            factor_observation_dates,
 
         "non_normal_factors":
             framework.get(

@@ -178,6 +178,7 @@ def evaluate_global_dollar_funding_statistics(
             "does not indicate unusual global dollar-funding "
             "stress."
         ),
+        observation_date=stats.observation_date,
     )
 
 

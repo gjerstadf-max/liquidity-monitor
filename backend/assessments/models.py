@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 
 
 @dataclass(frozen=True)
@@ -9,6 +10,7 @@ class Assessment:
     verdict: str
     confidence: str
     summary: str
+    observation_date: date | None = None
 
 
 @dataclass(frozen=True)

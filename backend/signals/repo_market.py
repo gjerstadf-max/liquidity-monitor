@@ -612,6 +612,7 @@ def evaluate_repo_market_statistics(
                 "show evidence of significant market "
                 "pressure."
             ),
+            observation_date=stats.observation_date,
         )
 
     # =========================================================
@@ -659,6 +660,7 @@ def evaluate_repo_market_statistics(
                 "levels. Pressure is confirmed across "
                 "multiple secured-funding measures."
             ),
+            observation_date=stats.observation_date,
         )
 
     # =========================================================
@@ -706,6 +708,7 @@ def evaluate_repo_market_statistics(
                 "the economic magnitude thresholds "
                 "required for a higher-severity signal."
             ),
+            observation_date=stats.observation_date,
         )
 
     # =========================================================
@@ -732,6 +735,7 @@ def evaluate_repo_market_statistics(
                 "market does not confirm meaningful "
                 "market-wide pressure."
             ),
+            observation_date=stats.observation_date,
         )
 
     # =========================================================
@@ -755,6 +759,7 @@ def evaluate_repo_market_statistics(
             "dispersion, and upper-tail pricing do not "
             "show broad evidence of repo-market pressure."
         ),
+        observation_date=stats.observation_date,
     )
 
 

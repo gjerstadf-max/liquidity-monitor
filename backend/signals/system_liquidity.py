@@ -77,6 +77,7 @@ def evaluate_system_liquidity_signal(
                 "Liquidity is both historically low and "
                 "continuing to contract."
             ),
+            observation_date=current.observation_date,
         )
 
 
@@ -105,6 +106,7 @@ def evaluate_system_liquidity_signal(
                 "The current level is unusually low relative "
                 "to the past year and remains under pressure."
             ),
+            observation_date=current.observation_date,
         )
 
 
@@ -142,6 +144,7 @@ def evaluate_system_liquidity_signal(
                 "direction and historical position warrant "
                 "monitoring."
             ),
+            observation_date=current.observation_date,
         )
 
 
@@ -168,6 +171,7 @@ def evaluate_system_liquidity_signal(
                 "The recent direction indicates improving "
                 "system liquidity."
             ),
+            observation_date=current.observation_date,
         )
 
 
@@ -190,4 +194,5 @@ def evaluate_system_liquidity_signal(
             "Current conditions do not indicate unusual "
             "system-liquidity pressure."
         ),
+        observation_date=current.observation_date,
     )

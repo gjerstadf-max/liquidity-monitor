@@ -131,6 +131,7 @@ def evaluate_bank_funding_statistics(
                 "level, indicating severe banking-system "
                 "liquidity stress."
             ),
+            observation_date=stats.primary_credit_date,
         )
 
     # =========================================================
@@ -165,6 +166,7 @@ def evaluate_bank_funding_statistics(
                 "meaningful and is consistent with "
                 "elevated funding pressure."
             ),
+            observation_date=stats.primary_credit_date,
         )
 
     # =========================================================
@@ -195,6 +197,7 @@ def evaluate_bank_funding_statistics(
                 "but do not yet indicate severe "
                 "system-wide funding stress."
             ),
+            observation_date=stats.primary_credit_date,
         )
 
     # =========================================================
@@ -217,6 +220,7 @@ def evaluate_bank_funding_statistics(
             "do not indicate unusual banking-system "
             "funding stress."
         ),
+        observation_date=stats.primary_credit_date,
     )
 
 

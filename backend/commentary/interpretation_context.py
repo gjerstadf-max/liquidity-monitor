@@ -127,6 +127,12 @@ def build_interpretation_context(
                 "assessment":
                     factor_assessment.summary,
 
+                "observation_date": (
+                    factor_assessment.observation_date.isoformat()
+                    if factor_assessment.observation_date is not None
+                    else None
+                ),
+
                 "what_it_measures":
                     definition.what_matters_builder(),
 

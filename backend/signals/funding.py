@@ -52,6 +52,7 @@ def evaluate_funding_signal(as_of_date: date | None = None) -> Signal:
                 "Secured funding conditions show significant "
                 "relative pressure."
             ),
+        observation_date=stats.observation_date,
         )
 
 
@@ -76,6 +77,7 @@ def evaluate_funding_signal(as_of_date: date | None = None) -> Signal:
                 "The secured funding spread is elevated "
                 "relative to recent conditions."
             ),
+        observation_date=stats.observation_date,
         )
 
 
@@ -101,6 +103,7 @@ def evaluate_funding_signal(as_of_date: date | None = None) -> Signal:
                 "Funding markets remain functional, but the "
                 "secured-unsecured spread warrants monitoring."
             ),
+        observation_date=stats.observation_date,
         )
 
 
@@ -128,6 +131,7 @@ def evaluate_funding_signal(as_of_date: date | None = None) -> Signal:
                 "same type of secured funding pressure as a "
                 "large positive spread."
             ),
+        observation_date=stats.observation_date,
         )
 
 
@@ -149,4 +153,5 @@ def evaluate_funding_signal(as_of_date: date | None = None) -> Signal:
             "remain well aligned with no meaningful evidence "
             "of funding pressure."
         ),
+        observation_date=stats.observation_date,
     )

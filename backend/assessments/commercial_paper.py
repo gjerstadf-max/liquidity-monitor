@@ -51,4 +51,5 @@ def assess_commercial_paper(
 
         summary=
             signal.message,
+        observation_date=signal.observation_date
     )
