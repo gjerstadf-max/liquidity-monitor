@@ -91,7 +91,7 @@ class TreasuryMarketSnapshot:
 @dataclass(frozen=True)
 class TreasuryMarketSpreadStatistics:
     """
-    Statistical context for the Treasury 3M - IORB spread.
+    Statistical context for the Treasury 3M - administered reserve rate spread.
     """
 
     observation_date: date
@@ -99,6 +99,8 @@ class TreasuryMarketSpreadStatistics:
     lookback: int
 
     observations_used: int
+
+    administered_rate_label: str
 
     current_spread_bp: float
 
@@ -696,9 +698,18 @@ def treasury_market_spread_statistics(
         history[-2][3]
     )
 
+    administered_rate_symbol = (
+        _administered_reserve_rate_symbol(
+            history[-1][0]
+        )
+    )
+
     return TreasuryMarketSpreadStatistics(
         observation_date=
             history[-1][0],
+        administered_rate_label=(
+            administered_rate_symbol.upper()
+        ),
 
         lookback=
             lookback,

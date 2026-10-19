@@ -76,7 +76,7 @@ class TreasuryMarketActivityDiagnostics:
 
     auctions_used: int
     auction_offering_billions: float
-
+    administered_rate_label: str
     treasury_iorb_spread_bp: float
     treasury_iorb_percentile: float
     treasury_iorb_z: float
@@ -153,6 +153,10 @@ def build_treasury_market_activity_diagnostics(
 
         auction_offering_billions=(
             absorption.offering_amount_billions
+        ),
+
+        administered_rate_label=(
+            pricing.administered_rate_label
         ),
 
         treasury_iorb_spread_bp=(
@@ -448,7 +452,9 @@ def evaluate_treasury_market_activity_signal(
             f"z-score of {absorption_z:+.2f}. "
             f"The 3-month Treasury yield is "
             f"{diagnostics.treasury_iorb_spread_bp:+.0f} "
-            f"bp relative to IORB, with a recent z-score "
+            f"bp relative to "
+            f"{diagnostics.administered_rate_label}, "
+            f"with a recent z-score "
             f"of {diagnostics.treasury_iorb_z:+.2f}. "
             "Current Treasury bill issuance and auction "
             "demand do not indicate unusual market pressure."
