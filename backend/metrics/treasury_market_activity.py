@@ -36,9 +36,9 @@ REGULAR_BILL_TERMS = (
 
 
 TREASURY_HISTORY_START = date(
-    2021,
-    7,
-    29,
+    2018,
+    4,
+    3,
 )
 
 
@@ -47,8 +47,20 @@ TREASURY_3M_SYMBOL = (
 )
 
 
+IOER_SYMBOL = (
+    "ioer"
+)
+
+
 IORB_SYMBOL = (
     "iorb"
+)
+
+
+IORB_START_DATE = date(
+    2021,
+    7,
+    29,
 )
 
 
@@ -438,6 +450,28 @@ def _load_indicator_history(
     ]
 
 
+def _administered_reserve_rate_symbol(
+    as_of_date: date | None = None,
+) -> str:
+    """
+    Select the Federal Reserve administered reserve rate
+    appropriate for the historical regime.
+
+    IOER applies through July 28, 2021.
+    IORB applies beginning July 29, 2021.
+    """
+    comparison_date = (
+        as_of_date
+        if as_of_date is not None
+        else _market_today()
+    )
+
+    if comparison_date < IORB_START_DATE:
+        return IOER_SYMBOL
+
+    return IORB_SYMBOL
+
+
 def _load_common_rate_history(
     as_of_date: date | None = None,
 ) -> list[
@@ -449,23 +483,16 @@ def _load_common_rate_history(
     ]
 ]:
     """
-    Load Treasury 3M and IORB strictly on common
-    observation dates.
+    Load Treasury 3M and the applicable administered
+    reserve rate strictly on common observation dates.
 
-    Returns:
+    Historical regime:
+        through 2021-07-28 -> IOER
+        from    2021-07-29 -> IORB
 
-        (
-            observation_date,
-            treasury_3m_percent,
-            iorb_percent,
-            spread_bp,
-        )
-
-    This strict common-date alignment prevents a future
-    effective administered IORB observation from being
-    combined with an older Treasury market observation.
+    The third returned value retains the existing
+    iorb_percent interface for compatibility.
     """
-
     treasury_history = (
         _load_indicator_history(
             TREASURY_3M_SYMBOL,
@@ -474,9 +501,16 @@ def _load_common_rate_history(
         )
     )
 
-    iorb_history = (
+    reserve_symbol = (
+        _administered_reserve_rate_symbol(
+            as_of_date=
+                as_of_date,
+        )
+    )
+
+    reserve_history = (
         _load_indicator_history(
-            IORB_SYMBOL,
+            reserve_symbol,
             as_of_date=
                 as_of_date,
         )
@@ -485,7 +519,6 @@ def _load_common_rate_history(
     treasury_by_date = {
         observation_date:
             value
-
         for (
             observation_date,
             value,
@@ -493,15 +526,14 @@ def _load_common_rate_history(
         in treasury_history
     }
 
-    iorb_by_date = {
+    reserve_by_date = {
         observation_date:
             value
-
         for (
             observation_date,
             value,
         )
-        in iorb_history
+        in reserve_history
     }
 
     common_dates = sorted(
@@ -509,14 +541,15 @@ def _load_common_rate_history(
             treasury_by_date
         )
         & set(
-            iorb_by_date
+            reserve_by_date
         )
     )
 
     if not common_dates:
         raise RuntimeError(
             "No common observation dates found "
-            "for Treasury 3M and IORB."
+            "for Treasury 3M and "
+            f"{reserve_symbol.upper()}."
         )
 
     history = []
@@ -529,22 +562,22 @@ def _load_common_rate_history(
             ]
         )
 
-        iorb_rate = (
-            iorb_by_date[
+        reserve_rate = (
+            reserve_by_date[
                 observation_date
             ]
         )
 
         spread_bp = (
             treasury_rate
-            - iorb_rate
+            - reserve_rate
         ) * 100.0
 
         history.append(
             (
                 observation_date,
                 treasury_rate,
-                iorb_rate,
+                reserve_rate,
                 spread_bp,
             )
         )

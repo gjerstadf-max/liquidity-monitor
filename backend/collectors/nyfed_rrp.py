@@ -210,3 +210,185 @@ def print_latest_reverse_repo() -> None:
 
 if __name__ == "__main__":
     print_latest_reverse_repo()
+
+
+# =============================================================
+# HISTORICAL REVERSE-REPO COLLECTOR
+# =============================================================
+
+
+def fetch_reverse_repo_history(
+    start_date: date,
+    end_date: date,
+    timeout_seconds: float = 30.0,
+) -> list[
+    tuple[
+        date,
+        Decimal,
+    ]
+]:
+    """
+    Retrieve historical New York Fed reverse-repo
+    operation results over an explicit date range.
+
+    Returned values are:
+
+        (
+            operation_date,
+            total_accepted_dollars,
+        )
+
+    The production daily-refresh path remains separate
+    and continues to use fetch_latest_reverse_repo().
+    """
+    if start_date > end_date:
+        raise ValueError(
+            "start_date cannot be after end_date"
+        )
+
+    url = (
+        "https://markets.newyorkfed.org/api/"
+        "rp/reverserepo/propositions/search.json"
+    )
+
+    params = {
+        "startDate":
+            start_date.isoformat(),
+        "endDate":
+            end_date.isoformat(),
+    }
+
+    try:
+        with httpx.Client(
+            timeout=
+                timeout_seconds,
+            follow_redirects=True,
+        ) as client:
+            response = client.get(
+                url,
+                params=params,
+                headers={
+                    "Accept":
+                        "application/json",
+                    "User-Agent":
+                        "LiquidityMonitor/0.1",
+                },
+            )
+
+            response.raise_for_status()
+
+    except httpx.HTTPError as exc:
+        raise RuntimeError(
+            "New York Fed historical "
+            "reverse-repo request failed: "
+            f"{exc}"
+        ) from exc
+
+    try:
+        payload = response.json()
+
+    except ValueError as exc:
+        raise RuntimeError(
+            "New York Fed historical "
+            "reverse-repo response was "
+            "not valid JSON."
+        ) from exc
+
+    repo = payload.get(
+        "repo"
+    )
+
+    if not isinstance(
+        repo,
+        dict,
+    ):
+        raise RuntimeError(
+            "New York Fed historical "
+            "reverse-repo response did not "
+            "contain a repo object."
+        )
+
+    operations = repo.get(
+        "operations"
+    )
+
+    if not isinstance(
+        operations,
+        list,
+    ):
+        raise RuntimeError(
+            "New York Fed historical "
+            "reverse-repo response did not "
+            "contain an operations list."
+        )
+
+    values: list[
+        tuple[
+            date,
+            Decimal,
+        ]
+    ] = []
+
+    for record in operations:
+
+        if not isinstance(
+            record,
+            dict,
+        ):
+            continue
+
+        if (
+            record.get(
+                "operationType"
+            )
+            != "Reverse Repo"
+        ):
+            continue
+
+        try:
+            operation_date = (
+                date.fromisoformat(
+                    record[
+                        "operationDate"
+                    ]
+                )
+            )
+
+            amount = Decimal(
+                str(
+                    record[
+                        "totalAmtAccepted"
+                    ]
+                )
+            )
+
+        except (
+            KeyError,
+            ValueError,
+            TypeError,
+        ) as exc:
+            raise RuntimeError(
+                "Invalid historical reverse-repo "
+                f"record: {record!r}"
+            ) from exc
+
+        values.append(
+            (
+                operation_date,
+                amount,
+            )
+        )
+
+    if not values:
+        raise RuntimeError(
+            "New York Fed returned no historical "
+            "reverse-repo observations between "
+            f"{start_date} and {end_date}."
+        )
+
+    return sorted(
+        values,
+        key=lambda item:
+            item[0],
+    )
+

@@ -66,19 +66,28 @@ def _optional_decimal(
 ) -> Decimal | None:
     """
     Convert an optional API field to Decimal.
-    """
 
-    if value in (
-        None,
+    Historical New York Fed records may represent
+    unavailable values as NA or N/A.
+    """
+    if value is None:
+        return None
+
+    normalized = (
+        str(value)
+        .strip()
+    )
+
+    if normalized.upper() in {
         "",
+        "NA",
         "N/A",
-    ):
+    }:
         return None
 
     try:
-
         return Decimal(
-            str(value)
+            normalized
         )
 
     except (
@@ -86,12 +95,10 @@ def _optional_decimal(
         TypeError,
         ValueError,
     ) as exc:
-
         raise NewYorkFedDataError(
             "Could not convert value "
             f"to Decimal: {value!r}"
         ) from exc
-
 
 def _parse_reference_rate_record(
     record: dict[str, Any],

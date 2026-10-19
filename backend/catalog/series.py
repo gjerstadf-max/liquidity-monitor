@@ -444,6 +444,20 @@ TREASURY_INTERMEDIATION_SERIES = (
 TREASURY_MARKET_ACTIVITY_SERIES = (
 
     SeriesDefinition(
+        symbol="ioer",
+        name=(
+            "Interest Rate on Excess Reserves"
+        ),
+        category="Treasury Market Activity",
+        frequency="Daily",
+        units="Percent",
+        provider="fred",
+        external_id="IOER",
+        source_units="Percent",
+        role="core",
+    ),
+
+    SeriesDefinition(
         symbol="iorb",
         name=(
             "Interest Rate on Reserve "

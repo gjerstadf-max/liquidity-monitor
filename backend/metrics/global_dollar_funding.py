@@ -157,9 +157,11 @@ def global_dollar_funding_statistics(
                 vintage_date,
             )
 
-            fima = _load_vintage_series(
-                "fima_repo",
-                vintage_date,
+            # H41RESPPALGTRFNWW exists in FRED but is not
+            # archived in ALFRED. Use stored historical
+            # observations for replay.
+            fima = _load_series(
+                "fima_repo"
             )
 
     else:
@@ -183,7 +185,9 @@ def global_dollar_funding_statistics(
 
     fima_index = _index_at_or_before(
             fima,
-            as_of_date,
+            vintage_date
+            if is_historical_replay
+            else as_of_date,
         )
 
     if (

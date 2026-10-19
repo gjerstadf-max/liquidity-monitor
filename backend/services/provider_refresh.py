@@ -23,6 +23,7 @@ from backend.collectors.fred import (
 from backend.collectors.nyfed import (
     ReferenceRateObservation,
     fetch_latest_reference_rate,
+    fetch_reference_rate_history,
 )
 from backend.services.observation_store import (
     StoreResult,
@@ -31,6 +32,7 @@ from backend.services.observation_store import (
 )
 from backend.collectors.nyfed_rrp import (
     fetch_latest_reverse_repo,
+    fetch_reverse_repo_history,
 )
 
 
@@ -865,6 +867,246 @@ def refresh_nyfed_reference_rates(
 
 
     return provider_result
+
+
+# =============================================================
+# NY FED REFERENCE RATES — HISTORICAL BACKFILL
+# =============================================================
+
+
+def refresh_nyfed_reference_rates_history(
+    start_date: date,
+    end_date: date,
+) -> ProviderRefreshResult:
+    """
+    Backfill New York Fed reference-rate observations
+    over an explicit historical date range.
+
+    Daily refresh continues to use the last-N collector.
+    Historical replay population uses this date-range path.
+    """
+    if start_date > end_date:
+        raise ValueError(
+            "start_date cannot be after end_date"
+        )
+
+    groups = (
+        _reference_rate_groups()
+    )
+
+    if not groups:
+        raise RuntimeError(
+            "No active NY Fed reference-rate "
+            "series are registered."
+        )
+
+    print()
+    print(
+        "New York Fed Reference Rates "
+        "Historical Backfill"
+    )
+    print("=" * 72)
+
+    print(
+        f"Range: {start_date} "
+        f"through {end_date}"
+    )
+
+    results: list[
+        StoreResult
+    ] = []
+
+    for external_id in sorted(
+        groups
+    ):
+        definitions = (
+            groups[
+                external_id
+            ]
+        )
+
+        print()
+        print(
+            external_id.upper()
+        )
+        print("-" * 72)
+
+        observations = (
+            fetch_reference_rate_history(
+                indicator_id=
+                    external_id,
+                start_date=
+                    start_date,
+                end_date=
+                    end_date,
+            )
+        )
+
+        print(
+            "Observations received: "
+            f"{len(observations)}"
+        )
+
+        for definition in definitions:
+
+            values = (
+                _extract_reference_rate_values(
+                    observations=
+                        observations,
+                    definition=
+                        definition,
+                )
+            )
+
+            result = (
+                store_values(
+                    indicator_symbol=
+                        definition.symbol,
+                    values=
+                        values,
+                )
+            )
+
+            results.append(
+                result
+            )
+
+            _print_store_result(
+                result
+            )
+
+    provider_result = (
+        ProviderRefreshResult(
+            provider=
+                "nyfed_reference_rates",
+            series_results=
+                tuple(
+                    results
+                ),
+        )
+    )
+
+    print()
+    print("-" * 72)
+
+    print(
+        "Historical NY Fed reference-rate "
+        "backfill complete."
+    )
+
+    print(
+        f"Inserted: "
+        f"{provider_result.inserted}"
+    )
+
+    print(
+        f"Skipped:  "
+        f"{provider_result.skipped}"
+    )
+
+    return provider_result
+
+
+# =============================================================
+# NY FED ON RRP — HISTORICAL BACKFILL
+# =============================================================
+
+
+def refresh_nyfed_reverse_repo_history(
+    start_date: date,
+    end_date: date,
+) -> ProviderRefreshResult:
+    """
+    Backfill historical New York Fed reverse-repo
+    operation balances over an explicit date range.
+    """
+    definitions = (
+        series_for_provider(
+            "nyfed_reverse_repo"
+        )
+    )
+
+    if not definitions:
+        raise RuntimeError(
+            "No active New York Fed reverse-repo "
+            "series are registered."
+        )
+
+    observations = (
+        fetch_reverse_repo_history(
+            start_date=
+                start_date,
+            end_date=
+                end_date,
+        )
+    )
+
+    print()
+    print(
+        "New York Fed ON RRP "
+        "Historical Backfill"
+    )
+    print("=" * 72)
+
+    print(
+        f"Range: {start_date} "
+        f"through {end_date}"
+    )
+
+    print(
+        "Operations received: "
+        f"{len(observations)}"
+    )
+
+    results: list[
+        StoreResult
+    ] = []
+
+    for definition in definitions:
+
+        values = [
+            (
+                operation_date,
+                normalize_value(
+                    value=
+                        amount,
+                    transform=
+                        definition.transform,
+                ),
+            )
+            for (
+                operation_date,
+                amount,
+            )
+            in observations
+        ]
+
+        result = (
+            store_values(
+                indicator_symbol=
+                    definition.symbol,
+                values=
+                    values,
+            )
+        )
+
+        results.append(
+            result
+        )
+
+        _print_store_result(
+            result
+        )
+
+    return ProviderRefreshResult(
+        provider=
+            "nyfed_reverse_repo",
+        series_results=
+            tuple(
+                results
+            ),
+    )
+
 
 # =============================================================
 # NY FED ON RRP — PROVIDER REFRESH
