@@ -5,6 +5,7 @@ import argparse
 from datetime import date, timedelta
 
 from backend.catalog.series import get_series
+
 from backend.services.provider_refresh import (
     refresh_fred_vintage_series,
 )
@@ -48,19 +49,98 @@ def _symbols_for_replay_date(
     )
 
 
-def main() -> None:
+def _replay_dates(
+    start_date: date,
+    end_date: date,
+):
+    current_date = start_date
+
+    while current_date <= end_date:
+        yield current_date
+        current_date += timedelta(days=1)
+
+
+def _backfill_replay_date(
+    replay_date: date,
+    observation_count: int,
+) -> list[tuple[date, str, Exception]]:
+    vintage_date = replay_date - timedelta(days=1)
+
+    symbols = _symbols_for_replay_date(
+        replay_date
+    )
+
+    print()
+    print("-" * 72)
+    print(f"Replay date:  {replay_date}")
+    print(f"Vintage date: {vintage_date}")
+    print("-" * 72)
+
+    failures: list[
+        tuple[date, str, Exception]
+    ] = []
+
+    for symbol in symbols:
+        print(f"{symbol}:")
+
+        try:
+            result = refresh_fred_vintage_series(
+                definition=get_series(symbol),
+                vintage_date=vintage_date,
+                observation_count=observation_count,
+            )
+        except Exception as exc:
+            failures.append(
+                (
+                    replay_date,
+                    symbol,
+                    exc,
+                )
+            )
+
+            print(f"  FAILED — {exc}")
+            continue
+
+        print(f"  {result}")
+
+    return failures
+
+
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Capture the FRED/ALFRED vintages required "
-            "for a historical liquidity replay."
+            "for historical liquidity replay."
         )
     )
 
-    parser.add_argument(
+    date_group = parser.add_mutually_exclusive_group(
+        required=True
+    )
+
+    date_group.add_argument(
         "--date",
-        required=True,
         type=_parse_date,
-        help="Replay date in YYYY-MM-DD format.",
+        help=(
+            "Single replay date in YYYY-MM-DD format."
+        ),
+    )
+
+    date_group.add_argument(
+        "--start",
+        type=_parse_date,
+        help=(
+            "First replay date in YYYY-MM-DD format."
+        ),
+    )
+
+    parser.add_argument(
+        "--end",
+        type=_parse_date,
+        help=(
+            "Last replay date in YYYY-MM-DD format. "
+            "Required with --start."
+        ),
     )
 
     parser.add_argument(
@@ -73,45 +153,62 @@ def main() -> None:
         ),
     )
 
-    args = parser.parse_args()
+    return parser.parse_args()
 
-    replay_date: date = args.date
-    vintage_date = replay_date - timedelta(days=1)
 
-    symbols = _symbols_for_replay_date(
-        replay_date
-    )
+def main() -> None:
+    args = parse_args()
 
+    if args.date is not None:
+        if args.end is not None:
+            raise SystemExit(
+                "--end cannot be used with --date"
+            )
+
+        start_date = args.date
+        end_date = args.date
+
+    else:
+        if args.end is None:
+            raise SystemExit(
+                "--end is required when using --start"
+            )
+
+        start_date = args.start
+        end_date = args.end
+
+        if end_date < start_date:
+            raise SystemExit(
+                "--end must be on or after --start"
+            )
+
+    print()
     print(
-        "\nLIQUIDITY MONITOR — REPLAY VINTAGE BACKFILL"
+        "LIQUIDITY MONITOR — REPLAY VINTAGE BACKFILL"
     )
     print("=" * 72)
-    print(f"Replay date:  {replay_date}")
-    print(f"Vintage date: {vintage_date}")
-    print()
+    print(
+        f"Replay range: {start_date} through {end_date}"
+    )
 
-    failures: list[tuple[str, Exception]] = []
+    failures: list[
+        tuple[date, str, Exception]
+    ] = []
 
-    for symbol in symbols:
-        print(f"{symbol}:")
+    replay_count = 0
 
-        try:
-            result = refresh_fred_vintage_series(
-                definition=get_series(symbol),
-                vintage_date=vintage_date,
+    for replay_date in _replay_dates(
+        start_date,
+        end_date,
+    ):
+        replay_count += 1
+
+        failures.extend(
+            _backfill_replay_date(
+                replay_date=replay_date,
                 observation_count=args.count,
             )
-        except Exception as exc:
-            failures.append(
-                (
-                    symbol,
-                    exc,
-                )
-            )
-            print(f"  FAILED — {exc}")
-            continue
-
-        print(f"  {result}")
+        )
 
     print()
     print("=" * 72)
@@ -122,9 +219,9 @@ def main() -> None:
             f"{len(failures)} failure(s)."
         )
 
-        for symbol, exc in failures:
+        for replay_date, symbol, exc in failures:
             print(
-                f"  {symbol}: "
+                f"  {replay_date} | {symbol}: "
                 f"{type(exc).__name__}: {exc}"
             )
 
@@ -132,7 +229,7 @@ def main() -> None:
 
     print(
         f"Backfill completed successfully for "
-        f"{len(symbols)} series."
+        f"{replay_count} replay date(s)."
     )
 
 
