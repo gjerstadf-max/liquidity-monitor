@@ -374,12 +374,27 @@ def daily_refresh() -> None:
         raise
 
     # ---------------------------------------------------------
-    # INTELLIGENT INTERPRETATION
+    # REFRESH STATUS AND INTERPRETATION
     # ---------------------------------------------------------
 
-    interpretation_result = (
-        _refresh_liquidity_interpretation()
-    )
+    if result.status == "complete":
+        interpretation_result = (
+            _refresh_liquidity_interpretation()
+        )
+    else:
+        interpretation_result = {
+            "status": "skipped_provider_failure",
+            "saved": False,
+        }
+
+        print()
+        print(
+            "Liquidity interpretation skipped: "
+            "one or more providers failed."
+        )
+        print(
+            "Last stored AI interpretation preserved."
+        )
 
     # ---------------------------------------------------------
     # COMPLETE
@@ -396,7 +411,7 @@ def daily_refresh() -> None:
     )
 
     print(
-        "DAILY REFRESH COMPLETE"
+        f"DAILY REFRESH {result.status.upper()}"
     )
 
     print(
@@ -465,6 +480,22 @@ def daily_refresh() -> None:
         "Completed: "
         f"{completed_at.isoformat()}"
     )
+    print()
+    print(f"Overall status: {result.status}")
+
+    if result.failed_components:
+        print("Failed components:")
+
+        for component in result.failed_components:
+            print(f"  ✗ {component}")
+
+    if result.status != "complete":
+        raise RuntimeError(
+            "Daily refresh did not complete successfully: "
+            f"{result.status}; "
+            f"failed components: "
+            f"{', '.join(result.failed_components)}"
+        )
 
 
 # =============================================================

@@ -212,7 +212,22 @@ class MarketDataRefreshResult:
         StructuredRefreshResult,
         ...
     ]
+    failed_components: tuple[str, ...] = ()
 
+    @property
+    def status(self) -> str:
+        successful_count = (
+            len(self.provider_results)
+            + len(self.structured_results)
+        )
+
+        if not self.failed_components:
+            return "complete"
+
+        if successful_count > 0:
+            return "partial"
+
+        return "failed"
     # ---------------------------------------------------------
     # SCALAR PROVIDERS
     # ---------------------------------------------------------
@@ -427,6 +442,12 @@ def refresh_market_data(
     auction fields or database-writing details.
     """
 
+    if not PROVIDERS and not STRUCTURED_DATASETS:
+        raise RuntimeError(
+            "Market data refresh has no configured providers "
+            "or structured datasets."
+        )
+
     batch_id = str(uuid4())
 
     print()
@@ -468,6 +489,8 @@ def refresh_market_data(
         str
     ] = []
 
+    failed_components: list[str] = []
+
     # ---------------------------------------------------------
     # SCALAR SERIES PROVIDERS
     # ---------------------------------------------------------
@@ -495,13 +518,18 @@ def refresh_market_data(
                     f"failure: {type(audit_exc).__name__}"
                 )
 
-            _print_refresh_failure(
-                component_name=provider_name,
-                error=exc,
-                completed=completed,
+            failed_components.append(provider_name)
+
+            print(
+                f"Provider refresh failed: {provider_name} "
+                f"({type(exc).__name__})"
             )
 
-            raise
+            print(
+                "Continuing with remaining providers."
+            )
+
+            continue
 
         complete_refresh_run(
             run_id=run_id,
@@ -540,13 +568,18 @@ def refresh_market_data(
                     f"failure: {type(audit_exc).__name__}"
                 )
 
-            _print_refresh_failure(
-                component_name=dataset_name,
-                error=exc,
-                completed=completed,
+            failed_components.append(dataset_name)
+
+            print(
+                f"Dataset refresh failed: {dataset_name} "
+                f"({type(exc).__name__})"
             )
 
-            raise
+            print(
+                "Continuing with remaining datasets."
+            )
+
+            continue
 
         complete_refresh_run(
             run_id=run_id,
@@ -562,20 +595,20 @@ def refresh_market_data(
     # RESULT
     # ---------------------------------------------------------
 
-    refresh_result = (
-        MarketDataRefreshResult(
-
-            provider_results=
-                tuple(
-                    provider_results
-                ),
-
-            structured_results=
-                tuple(
-                    structured_results
-                ),
-        )
+    refresh_result = MarketDataRefreshResult(
+        provider_results=tuple(provider_results),
+        structured_results=tuple(structured_results),
+        failed_components=tuple(failed_components),
     )
+
+    print()
+    print(f"Overall status: {refresh_result.status}")
+
+    if refresh_result.failed_components:
+        print("Failed components:")
+
+        for component in refresh_result.failed_components:
+            print(f"  ✗ {component}")
 
     print()
 
@@ -584,7 +617,7 @@ def refresh_market_data(
     )
 
     print(
-        "MARKET DATA REFRESH COMPLETE"
+        f"MARKET DATA REFRESH {refresh_result.status.upper()}"
     )
 
     print(
