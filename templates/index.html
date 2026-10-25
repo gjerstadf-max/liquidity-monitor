@@ -1382,6 +1382,89 @@
     </div>
 
 
+<!-- DATA OPERATIONS -->
+<section class="funding-section">
+    <details class="data-operations">
+        <summary>
+            <strong>Data Operations</strong>
+            <span style="font-size: 0.85rem; margin-left: 12px;">
+                Provider refresh status
+            </span>
+        </summary>
+
+        <div style="padding-top: 16px;">
+            <p>
+                Operational data-provider status.
+                These results do not affect liquidity assessments.
+            </p>
+
+            {% if not data_health_available %}
+                <p>
+                    Provider health information is temporarily unavailable.
+                </p>
+
+            {% elif data_health %}
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; text-align: left;">
+                        <thead>
+                            <tr>
+                                <th>Data Provider</th>
+                                <th>Latest Attempt</th>
+                                <th>Last Successful Refresh</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for provider in data_health %}
+                            <tr>
+                                <td>{{ provider.component }}</td>
+
+                                <td>
+                                    {% if provider.latest_status == "success" %}
+                                        <span style="color: #16803c;">
+                                            Success
+                                        </span>
+                                    {% elif provider.latest_status == "failed" %}
+                                        <span style="color: #b42318;">
+                                            Failed
+                                        </span>
+                                        {% if provider.latest_error_type %}
+                                            <small>
+                                                ({{ provider.latest_error_type }})
+                                            </small>
+                                        {% endif %}
+                                    {% elif provider.latest_status == "possibly_interrupted" %}
+                                        <span style="color: #b7791f;">
+                                            Possibly interrupted
+                                        </span>
+                                    {% elif provider.latest_status == "running" %}
+                                        Running
+                                    {% else %}
+                                        Not yet recorded
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    {% if provider.last_success_at %}
+                                        {{ provider.last_success_at }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+            {% else %}
+                <p>No provider refresh history is available.</p>
+            {% endif %}
+        </div>
+    </details>
+</section>
+
+
 </main>
 
 

@@ -4,6 +4,7 @@ import os
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
+from urllib import response
 from dotenv import load_dotenv
 
 
@@ -22,6 +23,8 @@ class FredObservation:
     observation_date: date
     value: Decimal
 
+class FredResponseError(RuntimeError):
+    """FRED returned a successful HTTP response with invalid content."""
 
 def fetch_fred_series(
     series_id: str,
@@ -59,9 +62,19 @@ def fetch_fred_series(
 
     response.raise_for_status()
 
-    response.raise_for_status()
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        content_type = response.headers.get(
+            "content-type",
+            "unknown",
+        )
 
-    payload = response.json()
+        raise FredResponseError(
+            "FRED returned a non-JSON response "
+            f"(status={response.status_code}, "
+            f"content-type={content_type})."
+        ) from exc
 
     observations = []
 

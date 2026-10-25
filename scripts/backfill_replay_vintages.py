@@ -1,17 +1,24 @@
 from __future__ import annotations
 
 import argparse
+import time
 
 from datetime import date, timedelta
+
+import httpx
 
 from backend.catalog.series import get_series
 
 from backend.services.provider_refresh import (
     refresh_fred_vintage_series,
 )
-
+from backend.collectors.fred import FredResponseError
 
 IORB_START_DATE = date(2021, 7, 29)
+
+REQUEST_DELAY_SECONDS = 0.75
+MAX_ATTEMPTS = 5
+INITIAL_BACKOFF_SECONDS = 2.0
 
 
 BASE_REPLAY_VINTAGE_SYMBOLS = (
@@ -60,6 +67,69 @@ def _replay_dates(
         current_date += timedelta(days=1)
 
 
+def _is_transient_error(exc: Exception) -> bool:
+    if isinstance(exc, FredResponseError):
+        return True
+
+    if isinstance(exc, httpx.HTTPStatusError):
+        status_code = exc.response.status_code
+
+        return (
+            status_code == 429
+            or 500 <= status_code < 600
+        )
+
+    return isinstance(
+        exc,
+        (
+            httpx.TimeoutException,
+            httpx.NetworkError,
+        ),
+    )
+
+def _refresh_with_retry(
+    symbol: str,
+    vintage_date: date,
+    observation_count: int,
+):
+    backoff_seconds = INITIAL_BACKOFF_SECONDS
+
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            result = refresh_fred_vintage_series(
+                definition=get_series(symbol),
+                vintage_date=vintage_date,
+                observation_count=observation_count,
+            )
+
+            time.sleep(REQUEST_DELAY_SECONDS)
+
+            return result
+
+        except Exception as exc:
+            if (
+                not _is_transient_error(exc)
+                or attempt == MAX_ATTEMPTS
+            ):
+                raise
+
+            print(
+                f"  transient error "
+                f"({type(exc).__name__}); "
+                f"retrying in "
+                f"{backoff_seconds:.1f}s "
+                f"[attempt {attempt}/{MAX_ATTEMPTS}]"
+            )
+
+            time.sleep(backoff_seconds)
+
+            backoff_seconds *= 2
+
+    raise RuntimeError(
+        f"Retry loop exited unexpectedly for {symbol}."
+    )
+
+
 def _backfill_replay_date(
     replay_date: date,
     observation_count: int,
@@ -84,11 +154,12 @@ def _backfill_replay_date(
         print(f"{symbol}:")
 
         try:
-            result = refresh_fred_vintage_series(
-                definition=get_series(symbol),
+            result = _refresh_with_retry(
+                symbol=symbol,
                 vintage_date=vintage_date,
                 observation_count=observation_count,
             )
+
         except Exception as exc:
             failures.append(
                 (
@@ -98,7 +169,10 @@ def _backfill_replay_date(
                 )
             )
 
-            print(f"  FAILED — {exc}")
+            print(
+                f"  FAILED — "
+                f"{type(exc).__name__}"
+            )
             continue
 
         print(f"  {result}")
@@ -222,7 +296,7 @@ def main() -> None:
         for replay_date, symbol, exc in failures:
             print(
                 f"  {replay_date} | {symbol}: "
-                f"{type(exc).__name__}: {exc}"
+                f"{type(exc).__name__}"
             )
 
         raise SystemExit(1)

@@ -6,6 +6,9 @@ from backend.services.daily_snapshot import (
 from backend.services.funding_history import (
     get_funding_history,
 )
+from backend.services.refresh_run_store import (
+    get_production_refresh_health,
+)
 
 router = APIRouter(
     prefix="/api",
@@ -390,3 +393,13 @@ def funding_history(
 
         for point in history
     ]
+# =============================================================
+# DATA PROVIDER HEALTH
+# Operational status only — independent of liquidity assessments
+# =============================================================
+
+@router.get("/data-health")
+def get_data_health():
+    return {
+        "components": get_production_refresh_health()
+    }

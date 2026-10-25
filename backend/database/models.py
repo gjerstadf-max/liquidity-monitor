@@ -721,4 +721,62 @@ class TreasuryAuctionRecord(Base):
         default=utc_now,
         onupdate=utc_now,
     )
+    # =============================================================
+# PROVIDER REFRESH HISTORY
+# =============================================================
+
+
+class RefreshRun(Base):
+    """
+    Operational audit record for one provider refresh attempt.
+
+    This records data-collection health, not economic
+    market conditions.
+    """
+
+    __tablename__ = "refresh_runs"
+
+    id: Mapped[int] = mapped_column(
+        primary_key=True
+    )
+
+    batch_id: Mapped[str] = mapped_column(
+        String(36),
+        nullable=False,
+        index=True,
+    )
+
+    component: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+        index=True,
+    )
+
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+    )
+
+    error_type: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    received: Mapped[int | None] = mapped_column(
+        nullable=True,
+    )
+
+    inserted: Mapped[int | None] = mapped_column(
+        nullable=True,
+    )
     

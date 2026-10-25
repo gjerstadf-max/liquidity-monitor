@@ -19,6 +19,13 @@ from backend.services.provider_refresh import (
     refresh_nyfed_reference_rates,
     refresh_nyfed_reverse_repo,
 )
+from uuid import uuid4
+
+from backend.services.refresh_run_store import (
+    start_refresh_run,
+    complete_refresh_run,
+    fail_refresh_run,
+)
 
 
 # =============================================================
@@ -420,6 +427,8 @@ def refresh_market_data(
     auction fields or database-writing details.
     """
 
+    batch_id = str(uuid4())
+
     print()
 
     print(
@@ -463,77 +472,91 @@ def refresh_market_data(
     # SCALAR SERIES PROVIDERS
     # ---------------------------------------------------------
 
-    for (
-        provider_name,
-        refresher,
-    ) in PROVIDERS:
+
+    for provider_name, refresher in PROVIDERS:
+
+        run_id = start_refresh_run(
+            batch_id=batch_id,
+            component=provider_name,
+        )
 
         try:
-
-            result = (
-                refresher()
-            )
+            result = refresher()
 
         except Exception as exc:
+            try:
+                fail_refresh_run(
+                    run_id=run_id,
+                    error=exc,
+                )
+            except Exception as audit_exc:
+                print(
+                    "WARNING: Could not record provider "
+                    f"failure: {type(audit_exc).__name__}"
+                )
 
             _print_refresh_failure(
-                component_name=
-                    provider_name,
-
-                error=
-                    exc,
-
-                completed=
-                    completed,
+                component_name=provider_name,
+                error=exc,
+                completed=completed,
             )
 
             raise
 
-        provider_results.append(
-            result
+        complete_refresh_run(
+            run_id=run_id,
+            received=result.received,
+            inserted=result.inserted,
         )
 
-        completed.append(
-            provider_name
-        )
+        provider_results.append(result)
+        completed.append(provider_name)
+
 
     # ---------------------------------------------------------
     # STRUCTURED DATASETS
     # ---------------------------------------------------------
 
-    for (
-        dataset_name,
-        refresher,
-    ) in STRUCTURED_DATASETS:
+
+    for dataset_name, refresher in STRUCTURED_DATASETS:
+
+        run_id = start_refresh_run(
+            batch_id=batch_id,
+            component=dataset_name,
+        )
 
         try:
-
-            result = (
-                refresher()
-            )
+            result = refresher()
 
         except Exception as exc:
+            try:
+                fail_refresh_run(
+                    run_id=run_id,
+                    error=exc,
+                )
+            except Exception as audit_exc:
+                print(
+                    "WARNING: Could not record dataset "
+                    f"failure: {type(audit_exc).__name__}"
+                )
 
             _print_refresh_failure(
-                component_name=
-                    dataset_name,
-
-                error=
-                    exc,
-
-                completed=
-                    completed,
+                component_name=dataset_name,
+                error=exc,
+                completed=completed,
             )
 
             raise
 
-        structured_results.append(
-            result
+        complete_refresh_run(
+            run_id=run_id,
+            received=result.received,
+            inserted=result.inserted,
         )
 
-        completed.append(
-            dataset_name
-        )
+        structured_results.append(result)
+        completed.append(dataset_name)
+
 
     # ---------------------------------------------------------
     # RESULT

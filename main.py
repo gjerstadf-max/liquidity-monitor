@@ -7,13 +7,14 @@ from fastapi.templating import Jinja2Templates
 from backend.api.routes import router as api_router
 from backend.services.daily_snapshot import build_daily_snapshot
 
+from backend.services.refresh_run_store import (
+    get_production_refresh_health,
+)
+
 from backend.events.critical_events import (
     get_calendar_turn_events,
     get_major_critical_events,
 )
-
-
-
 
 app = FastAPI(
     title="Liquidity Monitor",
@@ -57,7 +58,18 @@ def home(request: Request):
     calendar_turn_events = (
     get_calendar_turn_events()
 )
-
+    # Operational provider health is separate from
+    # the economic liquidity assessment.
+    try:
+        data_health = get_production_refresh_health()
+        data_health_available = True
+    except Exception as exc:
+        print(
+            "WARNING: Provider health unavailable:",
+            type(exc).__name__,
+        )
+        data_health = []
+        data_health_available = False
 
     return templates.TemplateResponse(
         request=request,
@@ -66,6 +78,7 @@ def home(request: Request):
             "snapshot": snapshot,
             "critical_events": critical_events,
             "calendar_turn_events": calendar_turn_events,
+            "data_health": data_health,
+            "data_health_available": data_health_available,
         },
     )
-
